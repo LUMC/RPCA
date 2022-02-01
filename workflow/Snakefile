@@ -1,0 +1,16 @@
+
+from pathlib import Path
+import pandas as pd
+
+# Read configuration
+configfile: "config.yaml"
+
+READSDIR = Path(config["readsdir"])
+SOURCEDIR = Path(config["sourcedir"])
+OUTDIR = Path(config["results"])
+
+
+# rule all:
+#     input:
+#
+
