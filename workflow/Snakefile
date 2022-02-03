@@ -1,6 +1,5 @@
 
 from pathlib import Path
-# import pandas as pd
 
 # Read configuration
 configfile: "config/config.yaml"
@@ -11,21 +10,23 @@ genome_fasta = Path(config["genome_fasta"])
 existing_annotation = Path(config["existing_annotation"])
 OUTDIR = Path(config["results"])
 
+READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
+
 
 
 rule all:
     input:
-        OUTDIR / "sample.sam"
+        sam_files = expand( OUTDIR / "{sample}.sam", sample=[ read.name for read in READS])
 
 
 rule minimap2_align:
     input:
         genome = genome_fasta,
-        fq = READSDIR
+        fq = READSDIR / "{sample}"
     params:
         outdir = OUTDIR
     output:
-        sam = OUTDIR / "sample.sam"
+        sam_files = OUTDIR / "{sample}.sam"
     threads: 4
     singularity:
         'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
@@ -37,7 +38,5 @@ rule minimap2_align:
         -uf \
         -k14 \
         {input.genome} \
-        {input.fq} > {output.sam}
+        {input.fq} > {output.sam_files}
         '''
-
-
