@@ -5,10 +5,11 @@ from pathlib import Path
 configfile: "config/config.yaml"
 
 SOURCEDIR = Path(config["sourcedir"])
+OUTDIR = Path(config["results"])
 READSDIR = Path(config["readsdir"])
 genome_fasta = Path(config["genome_fasta"])
 existing_annotation = Path(config["existing_annotation"])
-OUTDIR = Path(config["results"])
+
 
 READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
@@ -24,7 +25,8 @@ rule minimap2_align:
         genome = genome_fasta,
         fq = READSDIR / "{sample}"
     params:
-        outdir = OUTDIR
+        outdir = OUTDIR,
+        opts = config["minimap2_opts"]
     output:
         sam_files = OUTDIR / "{sample}.sam"
     threads: 4
@@ -35,8 +37,7 @@ rule minimap2_align:
         minimap2 \
         -t 4 \
         -ax splice \
-        -uf \
-        -k14 \
+        {params.opts} \
         {input.genome} \
         {input.fq} > {output.sam_files}
         '''

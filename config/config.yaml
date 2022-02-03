@@ -11,3 +11,9 @@ results: "results"
 genome_fasta: "data/SIRV_150601a.fasta"
 
 existing_annotation: "data/SIRV_isofroms.gtf"
+
+# minimap2 parameters
+minimap2_opts: "-uf -k14"
+
+# threads
+threads: 4
