@@ -1,13 +1,13 @@
 # Source data
-sourcedir: "/exports/sascstudent/dbayraktar"
+sourcedir: "/exports/sascstudent/dbayraktar/snakemake_pipeline_development/RPCA"
 
 # FASTQ folder
-readsdir: "Data/SRR"
+readsdir: "data/SIRV_E0_PCS109_50.fq"
 
 # results are stored here
-results: "snakemake_pipeline_development/RPCA/results"
+results: "results"
 
 # Input genome
-genome_fasta: "Data/ensembl-human/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
+genome_fasta: "data/SIRV_150601a.fasta"
 
-existing_annotation: "Data/ensembl-human/Homo_sapiens.GRCh38.104.gtf"
+existing_annotation: "data/SIRV_isofroms.gtf"
