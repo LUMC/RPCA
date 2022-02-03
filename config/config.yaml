@@ -2,7 +2,7 @@
 sourcedir: "/exports/sascstudent/dbayraktar/snakemake_pipeline_development/RPCA"
 
 # FASTQ folder
-readsdir: "data/SIRV_E0_PCS109_50.fq"
+readsdir: "data/reads"
 
 # results are stored here
 results: "results"
