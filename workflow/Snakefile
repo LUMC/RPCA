@@ -17,7 +17,9 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
-        sam_files = expand( OUTDIR / "{sample}.sam", sample=[ read.name for read in READS])
+        # sam_files = expand( OUTDIR / "{sample}.sam", sample=[ read.name for read in READS])
+        OUTDIR / "spliceJns.txt"
+
 
 
 rule minimap2_align:
@@ -35,9 +37,32 @@ rule minimap2_align:
     shell:
         '''
         minimap2 \
-        -t 4 \
-        -ax splice \
-        {params.opts} \
-        {input.genome} \
-        {input.fq} > {output.sam_files}
+            -t 4 \
+            -ax splice \
+            {params.opts} \
+            {input.genome} \
+            {input.fq} > {output.sam_files}
         '''
+
+
+
+# TALON
+rule transcriptclean_extract_splicejns:
+    input:
+        annotation = existing_annotation,
+        genome = genome_fasta
+    params:
+        outdir = OUTDIR
+    output:
+        splicejns = OUTDIR / "spliceJns.txt"
+    threads: 1
+    singularity:
+        "docker://biocontainers/transcriptclean:v2.0.2_cv1"
+    shell:
+        '''
+        get_SJs_from_gtf \
+            --f {input.annotation} \
+            --g {input.genome} \
+            --o {output.splicejns}
+        '''
+
