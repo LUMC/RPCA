@@ -8,4 +8,4 @@
 #SBATCH --output=RPCA-%j.out
 
 CONF="config/config.yaml"
-snakemake -p --use-singularity --singularity-prefix "resources"  --singularity-args "--bind /exports" --use-conda -j 4 all --configfile $CONF
+snakemake -p --use-singularity --singularity-prefix "resources"  --singularity-args "--bind /exports" --use-conda -j 10 all --configfile $CONF
