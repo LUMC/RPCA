@@ -19,7 +19,7 @@ rule all:
     input:
         # sam_files = expand( OUTDIR / "{sample}.sam", sample=[ read.name for read in READS]).
         # OUTDIR / "spliceJns.txt",
-        clean_sam = expand( OUTDIR / "{sample}_clean.sam", sample=[ read.name for read in READS])
+        clean_sam = expand( OUTDIR / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ read.name.split('.')[0] for read in READS])
 
 
 
@@ -27,19 +27,19 @@ rule all:
 rule minimap2_align:
     input:
         genome = genome_fasta,
-        fq = READSDIR / "{sample}"
+        fq = READSDIR / "{sample}.fq"
     params:
         outdir = OUTDIR,
         opts = config["minimap2_opts"]
     output:
-        sam_files = OUTDIR / "{sample}.sam"
+        sam_files = OUTDIR / "alignments" /"{sample}.sam"
     threads: 4
     singularity:
         'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
     shell:
         '''
         minimap2 \
-            -t 4 \
+            -t {threads} \
             -ax splice \
             {params.opts} \
             {input.genome} \
@@ -55,7 +55,7 @@ rule get_SJs_from_gtf:
     params:
         outdir = OUTDIR
     output:
-        splicejns = OUTDIR / "spliceJns.txt"
+        splicejns = OUTDIR / "cleaned_alignments" / "spliceJns.txt"
     threads: 1
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
@@ -74,9 +74,9 @@ rule transcriptclean:
         genome = genome_fasta,
         splicejns = rules.get_SJs_from_gtf.output.splicejns
     params:
-        outdir = OUTDIR
+        outdir = lambda wildcards: OUTDIR / "cleaned_alignments" / wildcards.sample / wildcards.sample
     output:
-        clean_sam = OUTDIR / "{sample}_clean.sam"
+        clean_sam = OUTDIR / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam"
     threads: 10
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
@@ -85,8 +85,8 @@ rule transcriptclean:
         TranscriptClean \
             --sam {input.sam_files} \
             --genome {input.genome} \
-            -t 10 \
+            -t {threads} \
             --spliceJns {input.splicejns} \
-            --outprefix {output.clean_sam}
+            --outprefix {params.outdir}
         '''
 
