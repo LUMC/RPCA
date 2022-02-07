@@ -18,7 +18,8 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 rule all:
     input:
         clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ read.name.split('.')[0] for read in READS]),
-        database= OUTDIR / "TALON" / "talon.db"
+        database = OUTDIR / "TALON" / "talon.db",
+        labeled_sam = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam", sample=[ read.name.split('.')[0] for read in READS])
 
 
 
@@ -99,6 +100,7 @@ rule talon_initialize_database:
         genome_name= genome_fasta.name.split('.')[0],
     output:
         database = OUTDIR / "TALON" / "talon.db"
+    threads: 1
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
@@ -110,5 +112,28 @@ rule talon_initialize_database:
             --5p 500 \
             --3p 300 \
             --l 0 \
+            --o {params.outdir}
+        '''
+
+
+rule talon_label_reads:
+    input:
+        clean_sam = rules.transcriptclean.output.clean_sam,
+        genome = genome_fasta
+    params:
+        outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample
+    output:
+        labeled_sam = OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam"
+    threads: 4
+    singularity:
+        "docker://biocontainers/talon:v5.0_cv1"
+    shell:
+        '''
+        mkdir -p labeled
+        talon_label_reads \
+            --f {input.clean_sam}\
+            --g {input.genome} \
+            --t {threads} \
+            --ar 20 \
             --o {params.outdir}
         '''
