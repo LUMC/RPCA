@@ -1,9 +1,9 @@
 #!/bin/bash
 #
 #SBATCH --job-name="RPCA"
-#SBATCH --mem=30g
-#SBATCH --ntasks-per-node=4
-#SBATCH --time=1:0:0
+#SBATCH --mem=50g
+#SBATCH --ntasks-per-node=10
+#SBATCH --time=8:0:0
 #SBATCH --partition=all,highmem
 #SBATCH --output=RPCA-%j.out
 
