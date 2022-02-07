@@ -17,9 +17,8 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
-        # sam_files = expand( OUTDIR / "{sample}.sam", sample=[ read.name for read in READS]).
-        # OUTDIR / "spliceJns.txt",
-        clean_sam = expand( OUTDIR / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ read.name.split('.')[0] for read in READS])
+        clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ read.name.split('.')[0] for read in READS]),
+        database= OUTDIR / "TALON" / "talon.db"
 
 
 
@@ -55,7 +54,7 @@ rule get_SJs_from_gtf:
     params:
         outdir = OUTDIR
     output:
-        splicejns = OUTDIR / "cleaned_alignments" / "spliceJns.txt"
+        splicejns = OUTDIR / "TALON" / "cleaned_alignments" / "spliceJns.txt"
     threads: 1
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
@@ -74,9 +73,9 @@ rule transcriptclean:
         genome = genome_fasta,
         splicejns = rules.get_SJs_from_gtf.output.splicejns
     params:
-        outdir = lambda wildcards: OUTDIR / "cleaned_alignments" / wildcards.sample / wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "TALON" / "cleaned_alignments" / wildcards.sample / wildcards.sample
     output:
-        clean_sam = OUTDIR / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam"
+        clean_sam = OUTDIR / "TALON" /"cleaned_alignments" / "{sample}" / "{sample}_clean.sam"
     threads: 10
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
@@ -90,3 +89,26 @@ rule transcriptclean:
             --outprefix {params.outdir}
         '''
 
+
+rule talon_initialize_database:
+    input:
+        annotation = existing_annotation
+    params:
+        outdir = OUTDIR / "TALON" / "talon",
+        annotation_name= existing_annotation.name.split('.')[0],
+        genome_name= genome_fasta.name.split('.')[0],
+    output:
+        database = OUTDIR / "TALON" / "talon.db"
+    singularity:
+        "docker://biocontainers/talon:v5.0_cv1"
+    shell:
+        '''
+        talon_initialize_database \
+            --f {input.annotation} \
+            --a {params.annotation_name} \
+            --g {params.genome_name} \
+            --5p 500 \
+            --3p 300 \
+            --l 0 \
+            --o {params.outdir}
+        '''
