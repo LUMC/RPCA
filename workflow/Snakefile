@@ -17,8 +17,10 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
-        # sam_files = expand( OUTDIR / "{sample}.sam", sample=[ read.name for read in READS])
-        OUTDIR / "spliceJns.txt"
+        # sam_files = expand( OUTDIR / "{sample}.sam", sample=[ read.name for read in READS]).
+        # OUTDIR / "spliceJns.txt",
+        clean_sam = expand( OUTDIR / "{sample}_clean.sam", sample=[ read.name for read in READS])
+
 
 
 
@@ -45,9 +47,8 @@ rule minimap2_align:
         '''
 
 
-
 # TALON
-rule transcriptclean_extract_splicejns:
+rule get_SJs_from_gtf:
     input:
         annotation = existing_annotation,
         genome = genome_fasta
@@ -64,5 +65,28 @@ rule transcriptclean_extract_splicejns:
             --f {input.annotation} \
             --g {input.genome} \
             --o {output.splicejns}
+        '''
+
+
+rule transcriptclean:
+    input:
+        sam_files = rules.minimap2_align.output.sam_files,
+        genome = genome_fasta,
+        splicejns = rules.get_SJs_from_gtf.output.splicejns
+    params:
+        outdir = OUTDIR
+    output:
+        clean_sam = OUTDIR / "{sample}_clean.sam"
+    threads: 10
+    singularity:
+        "docker://biocontainers/transcriptclean:v2.0.2_cv1"
+    shell:
+        '''
+        TranscriptClean \
+            --sam {input.sam_files} \
+            --genome {input.genome} \
+            -t 10 \
+            --spliceJns {input.splicejns} \
+            --outprefix {output.clean_sam}
         '''
 
