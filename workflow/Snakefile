@@ -168,7 +168,7 @@ rule talon_annotator:
         outdir = OUTDIR / "TALON" / "annotated",
         genome_name = genome_fasta.name.split('.')[0],
     output:
-        log = OUTDIR / "TALON" / "annotated" / "talon_QC.log"
+        database_ann = OUTDIR / "TALON" / "ann_talon.db"
     threads: 10
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
@@ -179,5 +179,5 @@ rule talon_annotator:
             --db {input.db} \
             --build {params.genome_name}\
             --o {params.outdir}
+        mv -u {input.db} {output.database_ann}
         '''
-
