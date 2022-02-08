@@ -20,7 +20,8 @@ rule all:
         # clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ read.name.split('.')[0] for read in READS]),
         # database = OUTDIR / "TALON" / "talon.db",
         # labeled_sam = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam", sample=[ read.name.split('.')[0] for read in READS])
-        OUTDIR / "TALON" / "config.csv"
+        # OUTDIR / "TALON" / "config.csv",
+        log = OUTDIR / "TALON" / "annotated" / "talon_QC.log"
 
 
 
@@ -97,11 +98,11 @@ rule talon_initialize_database:
         annotation = existing_annotation
     params:
         outdir = OUTDIR / "TALON" / "talon",
-        annotation_name= existing_annotation.name.split('.')[0],
-        genome_name= genome_fasta.name.split('.')[0],
+        annotation_name = existing_annotation.name.split('.')[0],
+        genome_name = genome_fasta.name.split('.')[0]
     output:
         database = OUTDIR / "TALON" / "talon.db"
-    threads: 1
+    threads: 4
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
@@ -156,5 +157,27 @@ rule create_talon_config:
         do
             printf "%s,%s,ONT,{params.labels}/%s_labeled.sam\n" $name $name $name >>  {output.config};
         done;
+        '''
+
+
+rule talon_annotator:
+    input:
+        config = rules.create_talon_config.output.config,
+        db = rules.talon_initialize_database.output.database
+    params:
+        outdir = OUTDIR / "TALON" / "annotated",
+        genome_name = genome_fasta.name.split('.')[0],
+    output:
+        log = OUTDIR / "TALON" / "annotated" / "talon_QC.log"
+    threads: 10
+    singularity:
+        "docker://biocontainers/talon:v5.0_cv1"
+    shell:
+        '''
+        talon \
+            --f {input.config} \
+            --db {input.db} \
+            --build {params.genome_name}\
+            --o {params.outdir}
         '''
 
