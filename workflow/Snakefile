@@ -17,9 +17,10 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
-        clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ read.name.split('.')[0] for read in READS]),
-        database = OUTDIR / "TALON" / "talon.db",
-        labeled_sam = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam", sample=[ read.name.split('.')[0] for read in READS])
+        # clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ read.name.split('.')[0] for read in READS]),
+        # database = OUTDIR / "TALON" / "talon.db",
+        # labeled_sam = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam", sample=[ read.name.split('.')[0] for read in READS])
+        OUTDIR / "TALON" / "config.csv"
 
 
 
@@ -137,3 +138,23 @@ rule talon_label_reads:
             --ar 20 \
             --o {params.outdir}
         '''
+
+
+rule create_talon_config:
+    input:
+        reads = READS
+    params:
+        outdir = OUTDIR,
+        names = [ read.name.split('.')[0] for read in READS],
+        labels = OUTDIR / "TALON" / "labeled"
+    output:
+        config = OUTDIR / "TALON" / "config.csv"
+    threads: 1
+    shell:
+        '''
+        for name in {params.names};
+        do
+            printf "%s,%s,ONT,{params.labels}/%s_labeled.sam\n" $name $name $name >>  {output.config};
+        done;
+        '''
+
