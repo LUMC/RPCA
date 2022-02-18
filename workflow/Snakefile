@@ -13,29 +13,30 @@ existing_annotation = Path(config["existing_annotation"])
 
 READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
-
-
 rule all:
     input:
-        # clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ read.name.split('.')[0] for read in READS]),
+        # clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS]),
         # database = OUTDIR / "TALON" / "talon.db",
-        # labeled_sam = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam", sample=[ read.name.split('.')[0] for read in READS])
         # OUTDIR / "TALON" / "config.csv",
-        log = OUTDIR / "TALON" / "annotated" / "talon_QC.log"
-
-
+        # database_ann = OUTDIR / "TALON" / "ann_talon.db"
+        # filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
+        abundance=OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
+        # labeled_sam = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",sample=[read.name.split('.')[0] for read in READS]),
+        # config = OUTDIR / "TALON" / "config.csv",
+        # database = OUTDIR / "TALON" / "talon.db"
 
 
 rule minimap2_align:
     input:
         genome = genome_fasta,
-        fq = READSDIR / "{sample}.fq"
+        fq = READSDIR / "{sample}.fastq"
     params:
         outdir = OUTDIR,
         opts = config["minimap2_opts"]
     output:
         sam_files = OUTDIR / "alignments" /"{sample}.sam"
-    threads: 4
+    threads: 10
     singularity:
         'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
     shell:
@@ -69,7 +70,6 @@ rule get_SJs_from_gtf:
             --o {output.splicejns}
         '''
 
-
 rule transcriptclean:
     input:
         sam_files = rules.minimap2_align.output.sam_files,
@@ -92,32 +92,6 @@ rule transcriptclean:
             --outprefix {params.outdir}
         '''
 
-
-rule talon_initialize_database:
-    input:
-        annotation = existing_annotation
-    params:
-        outdir = OUTDIR / "TALON" / "talon",
-        annotation_name = existing_annotation.name.split('.')[0],
-        genome_name = genome_fasta.name.split('.')[0]
-    output:
-        database = OUTDIR / "TALON" / "talon.db"
-    threads: 4
-    singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
-    shell:
-        '''
-        talon_initialize_database \
-            --f {input.annotation} \
-            --a {params.annotation_name} \
-            --g {params.genome_name} \
-            --5p 500 \
-            --3p 300 \
-            --l 0 \
-            --o {params.outdir}
-        '''
-
-
 rule talon_label_reads:
     input:
         clean_sam = rules.transcriptclean.output.clean_sam,
@@ -125,8 +99,8 @@ rule talon_label_reads:
     params:
         outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample
     output:
-        labeled_sam = OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam"
-    threads: 4
+        labeled_sam = OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",
+    threads: 10
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
@@ -140,44 +114,114 @@ rule talon_label_reads:
             --o {params.outdir}
         '''
 
-
 rule create_talon_config:
     input:
-        reads = READS
+        labels = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
     params:
-        outdir = OUTDIR,
-        names = [ read.name.split('.')[0] for read in READS],
-        labels = OUTDIR / "TALON" / "labeled"
+        datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
-        config = OUTDIR / "TALON" / "config.csv"
+        config = OUTDIR / "TALON" / "config.csv",
     threads: 1
-    shell:
-        '''
-        for name in {params.names};
-        do
-            printf "%s,%s,ONT,{params.labels}/%s_labeled.sam\n" $name $name $name >>  {output.config};
-        done;
-        '''
+    run:
+        for label, name in zip(input.labels, params.datasetnames):
+            with open(output.config, 'a+') as config:
+                config.write("%s,%s,ONT,%s\n" % (name, name, label))
 
-
-rule talon_annotator:
+rule talon_initialize_annotate_database:
     input:
-        config = rules.create_talon_config.output.config,
-        db = rules.talon_initialize_database.output.database
+        annotation = existing_annotation,
+        config = rules.create_talon_config.output.config
     params:
-        outdir = OUTDIR / "TALON" / "annotated",
-        genome_name = genome_fasta.name.split('.')[0],
+        outdir = OUTDIR / "TALON" / "talon",
+        dbloc = OUTDIR / "TALON" / "talon.db",
     output:
-        database_ann = OUTDIR / "TALON" / "ann_talon.db"
-    threads: 10
+        database = OUTDIR / "TALON" / "talon.db"
+    threads: 4
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
         '''
+        
+        talon_initialize_database \
+            --f {input.annotation} \
+            --a "SIRV_annot" \
+            --g "SIRV" \
+            --5p 500 \
+            --3p 300 \
+            --o {params.outdir}
+        echo "completed init"
+        
         talon \
             --f {input.config} \
-            --db {input.db} \
-            --build {params.genome_name}\
-            --o {params.outdir}
-        mv -u {input.db} {output.database_ann}
+            --db {params.dbloc} \
+            --build "SIRV" \
+            --o {params.outdir} \
+            -t {threads}
+        echo "completed annot"
         '''
+
+rule talon_filter_transcripts:
+    input:
+        db = rules.talon_initialize_annotate_database.output.database
+    params:
+        outdir = OUTDIR,
+        datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS],
+        mincount= config["mincounts"],
+        mindatasets= config["mindatasets"]
+    output:
+        filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
+    threads: 1
+    singularity:
+        "docker://biocontainers/talon:v5.0_cv1"
+    shell:
+        '''
+        talon_filter_transcripts \
+            --db {input.db} \
+            --datasets {params.datasetnames} \
+            -a "SIRV_annot" \
+            --maxFracA 0.5 \
+            --minCount {params.mincount} \
+            --minDatasets {params.mindatasets} \
+            --o {output.filtered_transcripts}
+        '''
+
+rule talon_abundance:
+    input:
+        db = rules.talon_initialize_annotate_database.output.database,
+        filter = rules.talon_filter_transcripts.output.filtered_transcripts
+    params:
+        outdir = OUTDIR / "TALON" / 'filtered'
+    output:
+        abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv'
+    singularity:
+        "docker://biocontainers/talon:v5.0_cv1"
+    shell:
+        '''
+        talon_abundance \
+            --db {input.db} \
+            --whitelist {input.filter} \
+            -a "SIRV_annot" \
+            --build "SIRV" \
+            --o {params.outdir}
+        '''
+
+rule talon_create_GTF:
+    input:
+        db = rules.talon_initialize_annotate_database.output.database,
+        filter= rules.talon_filter_transcripts.output.filtered_transcripts
+    params:
+        outdir = OUTDIR / "TALON" / 'filtered'
+    output:
+        GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
+    singularity:
+        "docker://biocontainers/talon:v5.0_cv1"
+    shell:
+        '''
+        talon_create_GTF \
+            --db {input.db} \
+            --whitelist {input.filter} \
+            -a "SIRV_annot" \
+            --build "SIRV" \
+            --o {params.outdir}
+        '''
+

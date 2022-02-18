@@ -2,18 +2,23 @@
 sourcedir: "/exports/sascstudent/dbayraktar/snakemake_pipeline_development/RPCA"
 
 # FASTQ folder
-readsdir: "data/reads"
+readsdir: "/exports/sascstudent/dbayraktar/Data/selas_data/filter"
 
 # results are stored here
 results: "results"
 
 # Input genome
-genome_fasta: "data/SIRV_150601a.fasta"
+genome_fasta: "/exports/sascstudent/dbayraktar/Data/selas_data/WT_AdV-lumc007_WGS-headeredit.fa"
 
-existing_annotation: "data/SIRV_isofroms.gtf"
+existing_annotation: "/exports/sascstudent/dbayraktar/Data/selas_data/AdV-lumc007_LUMC.gtf"
 
 # minimap2 parameters
 minimap2_opts: "-uf -k14"
 
+# TALON parameters
+mincounts: "5"
+
+mindatasets: "2"
+
 # threads
-threads: 4
+threads: 10
