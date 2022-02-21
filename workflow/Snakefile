@@ -134,6 +134,8 @@ rule talon_initialize_annotate_database:
     params:
         outdir = OUTDIR / "TALON" / "talon",
         dbloc = OUTDIR / "TALON" / "talon.db",
+        annotation_name = existing_annotation.name.split('.')[0],
+        genome_name = genome_fasta.name.split('.')[0],
     output:
         database = OUTDIR / "TALON" / "talon.db"
     threads: 4
@@ -144,8 +146,8 @@ rule talon_initialize_annotate_database:
         
         talon_initialize_database \
             --f {input.annotation} \
-            --a "SIRV_annot" \
-            --g "SIRV" \
+            --a {params.annotation_name} \
+            --g {params.genome_name} \
             --5p 500 \
             --3p 300 \
             --o {params.outdir}
@@ -154,7 +156,7 @@ rule talon_initialize_annotate_database:
         talon \
             --f {input.config} \
             --db {params.dbloc} \
-            --build "SIRV" \
+            --build {params.genome_name} \
             --o {params.outdir} \
             -t {threads}
         echo "completed annot"
@@ -167,7 +169,8 @@ rule talon_filter_transcripts:
         outdir = OUTDIR,
         datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS],
         mincount= config["mincounts"],
-        mindatasets= config["mindatasets"]
+        mindatasets= config["mindatasets"],
+        annotation_name = existing_annotation.name.split('.')[0],
     output:
         filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
     threads: 1
@@ -178,7 +181,7 @@ rule talon_filter_transcripts:
         talon_filter_transcripts \
             --db {input.db} \
             --datasets {params.datasetnames} \
-            -a "SIRV_annot" \
+            -a {params.annotation_name} \
             --maxFracA 0.5 \
             --minCount {params.mincount} \
             --minDatasets {params.mindatasets} \
@@ -190,7 +193,8 @@ rule talon_abundance:
         db = rules.talon_initialize_annotate_database.output.database,
         filter = rules.talon_filter_transcripts.output.filtered_transcripts
     params:
-        outdir = OUTDIR / "TALON" / 'filtered'
+        outdir = OUTDIR / "TALON" / 'filtered',
+        annotation_name = existing_annotation.name.split('.')[0],
     output:
         abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv'
     singularity:
@@ -200,7 +204,7 @@ rule talon_abundance:
         talon_abundance \
             --db {input.db} \
             --whitelist {input.filter} \
-            -a "SIRV_annot" \
+            -a {params.annotation_name} \
             --build "SIRV" \
             --o {params.outdir}
         '''
@@ -210,7 +214,8 @@ rule talon_create_GTF:
         db = rules.talon_initialize_annotate_database.output.database,
         filter= rules.talon_filter_transcripts.output.filtered_transcripts
     params:
-        outdir = OUTDIR / "TALON" / 'filtered'
+        outdir = OUTDIR / "TALON" / 'filtered',
+        annotation_name = existing_annotation.name.split('.')[0],
     output:
         GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
     singularity:
@@ -220,7 +225,7 @@ rule talon_create_GTF:
         talon_create_GTF \
             --db {input.db} \
             --whitelist {input.filter} \
-            -a "SIRV_annot" \
+            -a {params.annotation_name} \
             --build "SIRV" \
             --o {params.outdir}
         '''
