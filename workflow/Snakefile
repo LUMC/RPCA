@@ -28,6 +28,9 @@ rule all:
 
 
 rule minimap2_align:
+    '''
+    Align reads to reference genome.
+    '''
     input:
         genome = genome_fasta,
         fq = READSDIR / "{sample}.fastq"
@@ -52,6 +55,10 @@ rule minimap2_align:
 
 # TALON
 rule get_SJs_from_gtf:
+    '''
+    Extracts splice junctions from annotation file for use with 
+    TranscriptClean.
+    '''
     input:
         annotation = existing_annotation,
         genome = genome_fasta
@@ -71,6 +78,9 @@ rule get_SJs_from_gtf:
         '''
 
 rule transcriptclean:
+    '''
+    Corrects artefactual noncanonical splice junctions.
+    '''
     input:
         sam_files = rules.minimap2_align.output.sam_files,
         genome = genome_fasta,
@@ -93,6 +103,9 @@ rule transcriptclean:
         '''
 
 rule talon_label_reads:
+    '''
+    Flag possible internal priming in reads.
+    '''
     input:
         clean_sam = rules.transcriptclean.output.clean_sam,
         genome = genome_fasta
@@ -115,6 +128,9 @@ rule talon_label_reads:
         '''
 
 rule create_talon_config:
+    '''
+    Create configuration file containing labeled reads locations.
+    '''
     input:
         labels = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
     params:
@@ -128,6 +144,11 @@ rule create_talon_config:
                 config.write("%s,%s,ONT,%s\n" % (name, name, label))
 
 rule talon_initialize_annotate_database:
+    '''
+    Initialize TALON database from annotation file.
+    Annotate transcripts by comparing them to the database and update 
+    database accordingly afterwards.
+    '''
     input:
         annotation = existing_annotation,
         config = rules.create_talon_config.output.config
@@ -163,6 +184,9 @@ rule talon_initialize_annotate_database:
         '''
 
 rule talon_filter_transcripts:
+    '''
+    Create whitelist of transcripts that passed filter.
+    '''
     input:
         db = rules.talon_initialize_annotate_database.output.database
     params:
@@ -189,6 +213,9 @@ rule talon_filter_transcripts:
         '''
 
 rule talon_abundance:
+    '''
+    Calculate abundance for transcripts in whitelist.
+    '''
     input:
         db = rules.talon_initialize_annotate_database.output.database,
         filter = rules.talon_filter_transcripts.output.filtered_transcripts
@@ -210,6 +237,9 @@ rule talon_abundance:
         '''
 
 rule talon_create_GTF:
+    '''
+    Extract transcripts from whitelist as GTF.
+    '''
     input:
         db = rules.talon_initialize_annotate_database.output.database,
         filter= rules.talon_filter_transcripts.output.filtered_transcripts
