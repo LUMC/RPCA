@@ -15,16 +15,9 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
-        # clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS]),
-        # database = OUTDIR / "TALON" / "talon.db",
-        # OUTDIR / "TALON" / "config.csv",
-        # database_ann = OUTDIR / "TALON" / "ann_talon.db"
-        # filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
-        abundance=OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
-        GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
-        # labeled_sam = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",sample=[read.name.split('.')[0] for read in READS]),
-        # config = OUTDIR / "TALON" / "config.csv",
-        # database = OUTDIR / "TALON" / "talon.db"
+        # abundance=OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        # GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
+        bam = expand(OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
 
 
 rule minimap2_align:
@@ -52,6 +45,24 @@ rule minimap2_align:
             {input.fq} > {output.sam_files}
         '''
 
+rule sam_to_bam:
+    '''
+    Converts SAM to BAM. 
+    '''
+    input:
+        sam = rules.minimap2_align.output
+    params:
+        outdir = lambda wildcards: OUTDIR / "alignments" / "BAM" / wildcards.sample
+    output:
+        bam = OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam"
+    threads: 10
+    singularity:
+        "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
+    shell:
+        '''
+        samtools view -Sb {input.sam} | samtools sort -@ {threads} -o {output.bam}
+        samtools index {output.bam}
+        '''
 
 # TALON
 rule get_SJs_from_gtf:
@@ -260,3 +271,11 @@ rule talon_create_GTF:
             --o {params.outdir}
         '''
 
+# #FLAIR
+# rule flair_bam_to_bed12:
+#
+# rule flair_correct:
+#
+# rule flair_collapse:
+#
+# rule flair_quantify:
