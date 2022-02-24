@@ -15,16 +15,16 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
-        # clean_sam = expand( OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS]),
-        # database = OUTDIR / "TALON" / "talon.db",
-        # OUTDIR / "TALON" / "config.csv",
-        # database_ann = OUTDIR / "TALON" / "ann_talon.db"
-        # filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
-        abundance=OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
-        GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
-        # labeled_sam = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",sample=[read.name.split('.')[0] for read in READS]),
-        # config = OUTDIR / "TALON" / "config.csv",
-        # database = OUTDIR / "TALON" / "talon.db"
+        # abundance=OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        # GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
+        # bam = expand(OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS]),
+        # bed12 = expand(OUTDIR / "FLAIR" / "BED12" / "{sample}.bed", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
+        # bed = expand(OUTDIR / "FLAIR" / "BED12" / "{sample}.bed", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
+        # bed_corrected = expand(OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
+        # bed_concatenated = OUTDIR / "FLAIR" / "concatenated_all_corrected.bed"
+        # gtf = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.gtf"
+        # config = OUTDIR / "FLAIR" / "manifest.tsv"
+        abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
 
 
 rule minimap2_align:
@@ -52,6 +52,24 @@ rule minimap2_align:
             {input.fq} > {output.sam_files}
         '''
 
+rule sam_to_bam:
+    '''
+    Converts SAM to BAM. 
+    '''
+    input:
+        sam = rules.minimap2_align.output
+    params:
+        outdir = lambda wildcards: OUTDIR / "alignments" / "BAM" / wildcards.sample
+    output:
+        bam = OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam"
+    threads: 10
+    singularity:
+        "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
+    shell:
+        '''
+        samtools view -Sb {input.sam} | samtools sort -@ {threads} -o {output.bam}
+        samtools index {output.bam}
+        '''
 
 # TALON
 rule get_SJs_from_gtf:
@@ -260,3 +278,163 @@ rule talon_create_GTF:
             --o {params.outdir}
         '''
 
+#FLAIR
+# rule flair_bam_to_bed12:
+#     input:
+#         bam = rules.sam_to_bam.output.bam
+#     params:
+#         outdir = lambda wildcards: OUTDIR / "FLAIR" / "BED12" / wildcards.sample
+#     output:
+#         bed12 = OUTDIR / "FLAIR" / "BED12" / "{sample}.bed"
+#     threads: 1
+#     conda:
+#         "envs/flair_conda_env.yaml"
+#     shell:
+#         '''
+#         scripts/bam2Bed12.py --input_bam {input.bam} > {output.bed12}
+#         '''
+
+
+rule flair_align:
+    '''
+    Aligns samples against reference genome and smooths gaps in
+    the alignment.
+    '''
+    input:
+        genome = genome_fasta,
+        fq = READSDIR / "{sample}.fastq"
+    params:
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "BED12" / wildcards.sample
+    output:
+        bed = OUTDIR / "FLAIR" / "BED12" / "{sample}.bed"
+    threads: 10
+    singularity:
+        'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    shell:
+        '''
+        flair.py align \
+            --genome {input.genome}\
+            --reads {input.fq}\
+            --threads {threads}\
+            --nvrna \
+            --version1.3 \
+            --output {params.outdir}
+        '''
+
+rule flair_correct:
+    '''
+    Corrects misaligned splice sites using genome annotations
+    and/or short-read splice junctions.
+    '''
+    input:
+        genome = genome_fasta,
+        annotation= existing_annotation,
+        bed = rules.flair_align.output.bed
+    params:
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample,
+        window = config["flair_correct_window"]
+    output:
+        bed_corrected = OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed"
+    threads: 10
+    singularity:
+        'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    shell:
+        '''
+        flair.py correct \
+            --genome {input.genome} \
+            --query {input.bed} \
+            --gtf {input.annotation} \
+            --nvrna \
+            --threads {threads} \
+            --window {params.window} \
+            --output {params.outdir}
+        '''
+
+rule flair_concatenate:
+    '''
+    Combines BED12 output into one file.
+    '''
+    input:
+        bed_corrected = expand(OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
+    output:
+        bed_concatenated = OUTDIR / "FLAIR" / "concatenated_all_corrected.bed"
+    threads: 10
+    singularity:
+        'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    shell:
+        '''
+        cat {input.bed_corrected} >> {output.bed_concatenated}
+        '''
+
+rule flair_collapse:
+    '''
+    Defines high-confidence isoforms from corrected reads.
+    '''
+    input:
+        bed_concatenated = rules.flair_concatenate.output.bed_concatenated,
+        genome = genome_fasta,
+        annotation = existing_annotation,
+    params:
+        reads = READS,
+        temp_dir = OUTDIR / "FLAIR" / "COLLAPSE" / "collapse_logs",
+        outdir = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse",
+        quality = config["flair_collapse_quality"]
+    output:
+        fa = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.fa"
+    threads: 10
+    singularity:
+        'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    shell:
+        '''
+        flair.py collapse \
+            --genome {input.genome} \
+            --gtf {input.annotation} \
+            --reads {params.reads} \
+            --query {input.bed_concatenated} \
+            --temp_dir {params.temp_dir} \
+            --generate_map \
+            --threads {threads} \
+            --quality {params.quality} \
+            --output {params.outdir}
+        '''
+
+rule flair_config:
+    '''
+    Creates read manifest.
+    '''
+    input:
+        reads = READS
+    params:
+        datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS]
+    output:
+        config = OUTDIR / "FLAIR" / "manifest.tsv"
+    threads: 1
+    run:
+        for read, name in zip(input.reads, params.datasetnames):
+            with open(output.config, 'a+') as config:
+                config.write("%s\tcondition\tbatch\t%s\n" % (name, read))
+
+rule flair_quantify:
+    '''
+    Quantify FLAIR isoform usage across samples using minimap2.
+    '''
+    input:
+        manifest = rules.flair_config.output.config,
+        coll_fasta = rules.flair_collapse.output.fa
+    params:
+        quality = config["flair_abundance_quality"]
+    output:
+        abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
+    threads: 10
+    singularity:
+        'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    shell:
+        '''
+        flair.py quantify \
+            --reads_manifest {input.manifest} \
+            --isoforms {input.coll_fasta} \
+            --threads {threads} \
+            --tpm \
+            --quality {params.quality}
+            --output {output.abundance}
+        '''

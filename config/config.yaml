@@ -20,5 +20,15 @@ mincounts: "5"
 
 mindatasets: "2"
 
+# FLAIR parameters
+
+flair_correct_window: 10
+
+flair_collapse_quality: 1
+
+flair_abundance_quality: 1
+
+
+
 # threads
 threads: 10
