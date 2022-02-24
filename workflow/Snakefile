@@ -438,3 +438,44 @@ rule flair_quantify:
             --quality {params.quality} \
             --output {output.abundance}
         '''
+
+
+#OXFORD
+
+ContextFilter = """AlnContext: { Ref: "%s", LeftShift: -%d, RightShift: %d, RegexEnd: "[Aa]{%d,}", Stranded: True, Invert: True, Tsv: "alignments/internal_priming_fail.tsv"} """ % (genome_fasta,
+config["oxford_poly_context"], config["oxford_poly_context"], config["oxford_max_poly_run"])
+
+rule oxford_filter:
+    input:
+        sam = rules.minimap2_align.output.sam_files
+    params:
+        min_mq = config["oxford_minimum_mapping_quality"],
+        flt = lambda x: ContextFilter,
+    output:
+        bam_filtered = OUTDIR / "OXFORD" / "filtered"/ "{sample}.bam"
+    threads: {10}
+    conda:
+        "envs/oxford.yaml"
+    shell:
+        '''
+        samtools view -q {params.min_mq} -F 2304 -Sb -\
+        | seqkit bam -j {threads} -x -T '{params.flt}' -\
+        | samtools sort -@ {threads} -o {output.bam_filtered} -;
+        samtools index {output.bam_filtered}
+        '''
+
+rule oxford_run_stringtie:
+    input:
+        bam_filtered = rules.oxford_filter.output.bam_filtered,
+        annotation = existing_annotation,
+    output:
+        gff = OUTDIR / "OXFORD" / "stringtie" / "{sample}.gff",
+    params:
+        opts = config["oxford_stringtie_opts"],
+    singularity:
+        "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
+    threads: 10
+    shell:
+        """
+        stringtie --rf -G {input.annotation} -L -p {threads} {params.opts} -o {output.gff} {input.bam_filtered}
+        """

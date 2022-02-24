@@ -28,6 +28,16 @@ flair_collapse_quality: 1
 
 flair_abundance_quality: 1
 
+# OXFORD parameters
+
+oxford_poly_context: 24
+
+oxford_max_poly_run: 8
+
+oxford_minimum_mapping_quality: 40
+
+oxford_stringtie_opts: " --conservative "
+
 
 
 # threads
