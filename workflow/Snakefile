@@ -435,6 +435,6 @@ rule flair_quantify:
             --isoforms {input.coll_fasta} \
             --threads {threads} \
             --tpm \
-            --quality {params.quality}
+            --quality {params.quality} \
             --output {output.abundance}
         '''
