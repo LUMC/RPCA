@@ -331,7 +331,8 @@ rule flair_correct:
         annotation= existing_annotation,
         bed = rules.flair_align.output.bed
     params:
-        outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample,
+        window = config["flair_correct_window"]
     output:
         bed_corrected = OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed"
     threads: 10
@@ -345,7 +346,7 @@ rule flair_correct:
             --gtf {input.annotation} \
             --nvrna \
             --threads {threads} \
-            --window 10 \
+            --window {params.window} \
             --output {params.outdir}
         '''
 
@@ -376,7 +377,8 @@ rule flair_collapse:
     params:
         reads = READS,
         temp_dir = OUTDIR / "FLAIR" / "COLLAPSE" / "collapse_logs",
-        outdir = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse"
+        outdir = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse",
+        quality = config["flair_collapse_quality"]
     output:
         fa = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.fa"
     threads: 10
@@ -392,7 +394,7 @@ rule flair_collapse:
             --temp_dir {params.temp_dir} \
             --generate_map \
             --threads {threads} \
-            --quality 1 \
+            --quality {params.quality} \
             --output {params.outdir}
         '''
 
@@ -419,6 +421,8 @@ rule flair_quantify:
     input:
         manifest = rules.flair_config.output.config,
         coll_fasta = rules.flair_collapse.output.fa
+    params:
+        quality = config["flair_abundance_quality"]
     output:
         abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
     threads: 10
@@ -431,5 +435,6 @@ rule flair_quantify:
             --isoforms {input.coll_fasta} \
             --threads {threads} \
             --tpm \
+            --quality {params.quality}
             --output {output.abundance}
         '''
