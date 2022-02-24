@@ -296,6 +296,10 @@ rule talon_create_GTF:
 
 
 rule flair_align:
+    '''
+    Aligns samples against reference genome and smooths gaps in
+    the alignment.
+    '''
     input:
         genome = genome_fasta,
         fq = READSDIR / "{sample}.fastq"
@@ -318,6 +322,10 @@ rule flair_align:
         '''
 
 rule flair_correct:
+    '''
+    Corrects misaligned splice sites using genome annotations
+    and/or short-read splice junctions.
+    '''
     input:
         genome = genome_fasta,
         annotation= existing_annotation,
@@ -342,6 +350,9 @@ rule flair_correct:
         '''
 
 rule flair_concatenate:
+    '''
+    Combines BED12 output into one file.
+    '''
     input:
         bed_corrected = expand(OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
     output:
@@ -355,6 +366,9 @@ rule flair_concatenate:
         '''
 
 rule flair_collapse:
+    '''
+    Defines high-confidence isoforms from corrected reads.
+    '''
     input:
         bed_concatenated = rules.flair_concatenate.output.bed_concatenated,
         genome = genome_fasta,
@@ -383,6 +397,9 @@ rule flair_collapse:
         '''
 
 rule flair_config:
+    '''
+    Creates read manifest.
+    '''
     input:
         reads = READS
     params:
@@ -396,6 +413,9 @@ rule flair_config:
                 config.write("%s\tcondition\tbatch\t%s\n" % (name, read))
 
 rule flair_quantify:
+    '''
+    Quantify FLAIR isoform usage across samples using minimap2.
+    '''
     input:
         manifest = rules.flair_config.output.config,
         coll_fasta = rules.flair_collapse.output.fa
