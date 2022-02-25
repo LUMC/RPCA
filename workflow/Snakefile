@@ -24,7 +24,8 @@ rule all:
         # bed_concatenated = OUTDIR / "FLAIR" / "concatenated_all_corrected.bed"
         # gtf = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.gtf"
         # config = OUTDIR / "FLAIR" / "manifest.tsv"
-        abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
+        # abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
+        abundance = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv"
 
 
 rule minimap2_align:
@@ -51,6 +52,21 @@ rule minimap2_align:
             {input.genome} \
             {input.fq} > {output.sam_files}
         '''
+
+rule build_minimap_index:
+    input:
+        genome = genome_fasta
+    output:
+        index = OUTDIR / "alignments" / "genome_index.mmi"
+    params:
+        opts = config["minimap_index_opts"]
+    singularity:
+        'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
+    threads: 10
+    shell:
+        """
+        minimap2 -t {threads} {params.opts} -I 1000G -d {output.index} {input.genome}
+        """
 
 rule sam_to_bam:
     '''
@@ -447,18 +463,22 @@ config["oxford_poly_context"], config["oxford_poly_context"], config["oxford_max
 
 rule oxford_filter:
     input:
-        sam = rules.minimap2_align.output.sam_files
+        genome = genome_fasta,
+        fq = READSDIR / "{sample}.fastq",
+        index = rules.build_minimap_index.output.index
     params:
         min_mq = config["oxford_minimum_mapping_quality"],
         flt = lambda x: ContextFilter,
+        opts = config["minimap2_opts"]
     output:
         bam_filtered = OUTDIR / "OXFORD" / "filtered"/ "{sample}.bam"
-    threads: {10}
+    threads: 10
     conda:
-        "envs/oxford.yaml"
+        "envs/oxford_filter.yaml"
     shell:
         '''
-        samtools view -q {params.min_mq} -F 2304 -Sb -\
+        minimap2 -t {threads} -ax splice {params.opts} {input.index} {input.fq}\
+        | samtools view -q {params.min_mq} -F 2304 -Sb -\
         | seqkit bam -j {threads} -x -T '{params.flt}' -\
         | samtools sort -@ {threads} -o {output.bam_filtered} -;
         samtools index {output.bam_filtered}
@@ -468,14 +488,89 @@ rule oxford_run_stringtie:
     input:
         bam_filtered = rules.oxford_filter.output.bam_filtered,
         annotation = existing_annotation,
-    output:
-        gff = OUTDIR / "OXFORD" / "stringtie" / "{sample}.gff",
     params:
         opts = config["oxford_stringtie_opts"],
+    output:
+        gff = OUTDIR / "OXFORD" / "stringtie_output" / "{sample}.gff",
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     threads: 10
     shell:
-        """
+        '''
         stringtie --rf -G {input.annotation} -L -p {threads} {params.opts} -o {output.gff} {input.bam_filtered}
-        """
+        '''
+
+rule oxford_merge_stringtie:
+    input:
+        gff_files = expand(OUTDIR / "OXFORD" / "stringtie_output" / "{sample}.gff", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        annotation = existing_annotation
+    params:
+        opts = config["oxford_merge_opts"],
+    output:
+        merged_gff = OUTDIR / "OXFORD" / "stringtie_output" / "oxford_merged.gtf"
+    singularity:
+        "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
+    threads: 10
+    shell:
+        '''
+        stringtie \
+            --merge {input.gff_files} \
+            -G {input.annotation} \
+            {params.opts} \
+            -o {output.merged_gff}
+        '''
+
+rule oxford_abundance:
+    input:
+        bam = rules.oxford_filter.output.bam_filtered,
+        merged_gtf = rules.oxford_merge_stringtie.output.merged_gff
+    params:
+        opts = config["oxford_count_opts"],
+    output:
+        count_gtf = OUTDIR / "OXFORD" / "abundance" / "{sample}.gtf"
+    singularity:
+        "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
+    threads: 10
+    shell:
+        '''
+        stringtie \
+            -G {input.merged_gtf} \
+            -e \
+            {params.opts} \
+            -o {output.count_gtf} \
+            {input.bam}
+        '''
+
+rule oxford_config:
+    input:
+        count_gtf = expand(OUTDIR / "OXFORD" / "abundance" / "{sample}.gtf", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+    params:
+        datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS]
+    output:
+        config = OUTDIR / "OXFORD" / "abundance" / "oxford_config.tab"
+    threads: 1
+    run:
+        for read, name in zip(input.count_gtf, params.datasetnames):
+            with open(output.config, 'a+') as config:
+                config.write("%s\t%s\n" % (name, read))
+
+rule oxford_calc_abundance:
+    input:
+        config_file = rules.oxford_config.output.config
+    params:
+        avg_len = config["oxford_avg_len"],
+    output:
+        transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        genes = OUTDIR / "OXFORD" / "abundance" / "gene_count_matrix.csv",
+    threads: 10
+    singularity:
+        "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
+    shell:
+        '''
+        prepDE.py \
+            -i {input.config_file} \
+            -l {params.avg_len} \
+            -g {output.genes} \
+            -t {output.transcripts}
+        '''
+
