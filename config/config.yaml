@@ -15,6 +15,8 @@ existing_annotation: "/exports/sascstudent/dbayraktar/Data/selas_data/AdV-lumc00
 # minimap2 parameters
 minimap2_opts: "-uf -k14"
 
+minimap_index_opts: " -k14 "
+
 # TALON parameters
 mincounts: "5"
 
@@ -28,7 +30,21 @@ flair_collapse_quality: 1
 
 flair_abundance_quality: 1
 
+# OXFORD parameters
 
+oxford_poly_context: 24
+
+oxford_max_poly_run: 8
+
+oxford_minimum_mapping_quality: 40
+
+oxford_stringtie_opts: " -c 1 -f 0.01 "
+
+oxford_merge_opts: " -m 50 -c 0 -f 0.01 "
+
+oxford_count_opts: " -L -p 10 "
+
+oxford_avg_len: 1400
 
 # threads
 threads: 10

@@ -1,0 +1,30 @@
+name: oxford_filter
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=main
+  - _openmp_mutex=4.5=1_gnu
+  - bzip2=1.0.8=h7b6447c_0
+  - c-ares=1.18.1=h7f8727e_0
+  - ca-certificates=2021.10.26=h06a4308_2
+  - curl=7.62.0=hbc83047_0
+  - htslib=1.9=h4da6232_3
+  - k8=0.2.5=h9a82719_1
+  - libcurl=7.62.0=h20c2e04_0
+  - libdeflate=1.2=h516909a_1
+  - libev=4.33=h7f8727e_1
+  - libgcc=7.2.0=h69d50b8_2
+  - libgcc-ng=9.3.0=h5101ec6_17
+  - libgomp=9.3.0=h5101ec6_17
+  - libnghttp2=1.46.0=hce63b2e_0
+  - libssh2=1.9.0=h1ba5d50_1
+  - libstdcxx-ng=9.3.0=hd4cf53a_17
+  - minimap2=2.17=h5bf99c6_4
+  - ncurses=6.1=he6710b0_1
+  - openssl=1.1.1m=h7f8727e_0
+  - samtools=1.9=h10a08f8_12
+  - seqkit=2.1.0=h9ee0642_0
+  - xz=5.2.5=h7b6447c_0
+  - zlib=1.2.11=h7f8727e_4
+prefix: /exports/sascstudent/dbayraktar/miniconda3/envs/oxford_filter
