@@ -470,6 +470,10 @@ ContextFilter = """AlnContext: { Ref: "%s", LeftShift: -%d, RightShift: %d, Rege
 config["oxford_poly_context"], config["oxford_poly_context"], config["oxford_max_poly_run"])
 
 rule oxford_filter:
+    '''
+    Align samples filter for quality
+    and internal priming, convert to BAM.
+    '''
     input:
         genome = genome_fasta,
         fq = READSDIR / "{sample}.fastq",
@@ -493,6 +497,9 @@ rule oxford_filter:
         '''
 
 rule oxford_run_stringtie:
+    '''
+    Run stringtie for annotation per sample.
+    '''
     input:
         bam_filtered = rules.oxford_filter.output.bam_filtered,
         annotation = existing_annotation,
@@ -509,6 +516,9 @@ rule oxford_run_stringtie:
         '''
 
 rule oxford_merge_stringtie:
+    '''
+    Merge sample annotations to single file.
+    '''
     input:
         gff_files = expand(OUTDIR / "OXFORD" / "stringtie_output" / "{sample}.gff", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         annotation = existing_annotation
@@ -529,6 +539,9 @@ rule oxford_merge_stringtie:
         '''
 
 rule oxford_abundance:
+    '''
+    Run stringtie in expression estimation mode for all samples.
+    '''
     input:
         bam = rules.oxford_filter.output.bam_filtered,
         merged_gtf = rules.oxford_merge_stringtie.output.merged_gff
@@ -550,6 +563,10 @@ rule oxford_abundance:
         '''
 
 rule oxford_config:
+    '''
+    Create configuration file containing location of abundance
+    GTF files.
+    '''
     input:
         count_gtf = expand(OUTDIR / "OXFORD" / "abundance" / "{sample}.gtf", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
     params:
@@ -563,6 +580,9 @@ rule oxford_config:
                 config.write("%s\t%s\n" % (name, read))
 
 rule oxford_calc_abundance:
+    '''
+    Calculate abundance.
+    '''
     input:
         config_file = rules.oxford_config.output.config
     params:
