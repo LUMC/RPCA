@@ -24,8 +24,8 @@ rule all:
         # bed_concatenated = OUTDIR / "FLAIR" / "concatenated_all_corrected.bed"
         # gtf = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.gtf"
         # config = OUTDIR / "FLAIR" / "manifest.tsv"
-        # abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
-        abundance = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv"
+        abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
+        # abundance = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv"
 
 
 rule minimap2_align:
@@ -394,7 +394,11 @@ rule flair_collapse:
         reads = READS,
         temp_dir = OUTDIR / "FLAIR" / "COLLAPSE" / "collapse_logs",
         outdir = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse",
-        quality = config["flair_collapse_quality"]
+        window = config["flair_collapse_window"],
+        quality = config["flair_collapse_quality"],
+        support = config["flair_collapse_support"],
+        max_ends = config["flair_collapse_max_ends"],
+        opts = config["flair_collapse_optional"]
     output:
         fa = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.fa"
     threads: 10
@@ -410,7 +414,11 @@ rule flair_collapse:
             --temp_dir {params.temp_dir} \
             --generate_map \
             --threads {threads} \
+            --window {params.window} \
             --quality {params.quality} \
+            --support {params.support} \
+            --max_ends {params.max_ends} \
+            {params.opts} \
             --output {params.outdir}
         '''
 
