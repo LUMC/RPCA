@@ -3,3 +3,4 @@ resources
 data
 outfiles
 .snakemake
+/rulegraph.pdf

@@ -26,7 +26,15 @@ mindatasets: "2"
 
 flair_correct_window: 10
 
+flair_collapse_window: 100
+
 flair_collapse_quality: 1
+
+flair_collapse_support: 3
+
+flair_collapse_max_ends: 2
+
+flair_collapse_optional: " --isoformtss "
 
 flair_abundance_quality: 1
 
