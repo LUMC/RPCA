@@ -15,8 +15,8 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
-        # abundance=OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
-        # GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
+        abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
         # bam = expand(OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS]),
         # bed12 = expand(OUTDIR / "FLAIR" / "BED12" / "{sample}.bed", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
         # bed = expand(OUTDIR / "FLAIR" / "BED12" / "{sample}.bed", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
@@ -24,7 +24,7 @@ rule all:
         # bed_concatenated = OUTDIR / "FLAIR" / "concatenated_all_corrected.bed"
         # gtf = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.gtf"
         # config = OUTDIR / "FLAIR" / "manifest.tsv"
-        abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
+        # abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
         # abundance = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv"
 
 
@@ -256,6 +256,7 @@ rule talon_abundance:
     params:
         outdir = OUTDIR / "TALON" / 'filtered',
         annotation_name = existing_annotation.name.split('.')[0],
+        genome_name= genome_fasta.name.split('.')[0],
     output:
         abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv'
     singularity:
@@ -266,7 +267,7 @@ rule talon_abundance:
             --db {input.db} \
             --whitelist {input.filter} \
             -a {params.annotation_name} \
-            --build "SIRV" \
+            --build {params.genome_name} \
             --o {params.outdir}
         '''
 
@@ -280,6 +281,7 @@ rule talon_create_GTF:
     params:
         outdir = OUTDIR / "TALON" / 'filtered',
         annotation_name = existing_annotation.name.split('.')[0],
+        genome_name= genome_fasta.name.split('.')[0],
     output:
         GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
     singularity:
@@ -290,7 +292,7 @@ rule talon_create_GTF:
             --db {input.db} \
             --whitelist {input.filter} \
             -a {params.annotation_name} \
-            --build "SIRV" \
+            --build {params.genome_name} \
             --o {params.outdir}
         '''
 
@@ -601,4 +603,3 @@ rule oxford_calc_abundance:
             -g {output.genes} \
             -t {output.transcripts}
         '''
-
