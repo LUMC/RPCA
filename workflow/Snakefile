@@ -15,17 +15,18 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
+        # flair
+        # abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        # GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
+        # talon
         abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
         GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
-        # bam = expand(OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS]),
-        # bed12 = expand(OUTDIR / "FLAIR" / "BED12" / "{sample}.bed", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
-        # bed = expand(OUTDIR / "FLAIR" / "BED12" / "{sample}.bed", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
-        # bed_corrected = expand(OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed", sample=[ ".".join(read.name.split('.')[:-1]) for read in READS])
-        # bed_concatenated = OUTDIR / "FLAIR" / "concatenated_all_corrected.bed"
-        # gtf = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.gtf"
-        # config = OUTDIR / "FLAIR" / "manifest.tsv"
-        # abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
-        # abundance = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv"
+        # oxford
+        # transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        # alignment stats
+        # stats = OUTDIR / "alignments" / "stats" / "{sample}.stats"
+        # tracking file
+        #tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
 
 
 rule minimap2_align:
@@ -141,7 +142,8 @@ rule talon_label_reads:
     Flag possible internal priming in reads.
     '''
     input:
-        clean_sam = rules.transcriptclean.output.clean_sam,
+        # clean_sam = rules.transcriptclean.output.clean_sam,
+        sam_files = rules.minimap2_align.output.sam_files,
         genome = genome_fasta
     params:
         outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample
@@ -154,7 +156,7 @@ rule talon_label_reads:
         '''
         mkdir -p labeled
         talon_label_reads \
-            --f {input.clean_sam}\
+            --f {input.sam_files}\
             --g {input.genome} \
             --t {threads} \
             --ar 20 \
@@ -402,7 +404,8 @@ rule flair_collapse:
         max_ends = config["flair_collapse_max_ends"],
         opts = config["flair_collapse_optional"]
     output:
-        fa = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.fa"
+        fa = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.fa",
+        gtf = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.gtf"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
@@ -603,3 +606,121 @@ rule oxford_calc_abundance:
             -g {output.genes} \
             -t {output.transcripts}
         '''
+
+#analyses
+
+rule align_stats:
+    input:
+        bam = rules.sam_to_bam.output.bam,
+        reference = genome_fasta,
+    params:
+        outdir = lambda wildcards: OUTDIR / "alignments" / "stats" / wildcards.sample
+    output:
+        stats = OUTDIR  / "statistics" / "{sample}.stats"
+    threads: 10
+    singularity:
+        "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
+    shell:
+        '''
+        samtools stats \
+            --reference {input.reference} \
+            --threads {threads} \
+            {input.bam} | grep ^SN | cut -f 2- > {output.stats}
+        '''
+
+rule annotation_count:
+    input:
+        bams = expand(OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        annotation = existing_annotation,
+    output:
+        counts = OUTDIR / "statistics" / "annotation_count.txt"
+    threads: 10
+    singularity:
+        "docker://"
+    shell:
+        '''
+        subread featurecounts \
+            {input.bams} \
+            -T {threads} \
+            -a {input.annotation} \
+            -L \
+            -M \
+            -S 1 \
+            -o {output.counts}
+        '''
+
+rule combine:
+    input:
+        oxford_count = rules.oxford_calc_abundance.output.transcripts,
+        oxford_transcript = rules.oxford_merge_stringtie.output.merged_gff,
+        talon_count = rules.talon_abundance.output.abundance,
+        talon_transcripts = rules.talon_create_GTF.output.GTF,
+        flair_count = rules.flair_quantify.output.abundance,
+        flair_transcripts = rules.flair_collapse.output.gtf,
+    output:
+        oxford_combined = OUTDIR / "combined" / "oxford_counts.gtf",
+        flair_combined = OUTDIR / "combined" / "flair_counts.gtf",
+        talon_combined = OUTDIR / "combined" / "talon_counts.gtf",
+    threads: 1
+    script:
+        '''
+        combine.py 
+        '''
+
+rule gffcompare:
+    input:
+        oxford = rules.combine.output.oxford_combined,
+        flair = rules.combine.output.flair_combined,
+        talon = rules.combine.output.talon_combined,
+        annotation = existing_annotation
+    output:
+        tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
+    threads: 1
+    singularity:
+        "docker://quay.io/biocontainers/gffcompare:0.11.2--h7d875b9_2"
+    shell:
+        '''
+        gffcompare \
+            -r {input.annotation} \
+            -e 100 \
+            -d 100 \
+            -V \
+            --no-merge \
+            {input.oxford} {input.flair} {input.talon}
+        '''
+
+rule venn_diagram:
+    input:
+        tracking = rules.gffcompare.output.tracking
+    output:
+        all = OUTDIR / "graphs" / "diagram_all.png",
+        novel = OUTDIR / "graphs" / "diagram_novel.png",
+        known = OUTDIR / "graphs" / "diagram_known.png"
+    threads: 1
+    script:
+        '''
+        venndiagrams.py
+        '''
+
+rule plot_stats:
+    input:
+        alignstats = rules.align_stats.output.stats,
+        annocount = rules.annotation_count.output.counts,
+        flair_count = rules.flair_quantify.output.abundance,
+        talon_count = rules.talon_abundance.output.abundance,
+        oxford_count = rules.oxford_abundance.output.count_gtf,
+    output:
+        readalign = OUTDIR / "graphs" / "read_alignments.png",
+        mismatch = OUTDIR / "graphs" / "mismatches.png",
+        readlen = OUTDIR / "graphs" / "readlengths.png",
+        anno_count = OUTDIR / "graphs" / "anno_count_sample.png",
+        anno_count_all = OUTDIR / "graphs" / "anno_count_total.png",
+        count_comp = OUTDIR / "graphs" / "counts_per_pipeline.png"
+    threads: 1
+    conda:
+        "envs/notebook.yaml"
+    script:
+        '''
+        stats.py
+        '''
+
