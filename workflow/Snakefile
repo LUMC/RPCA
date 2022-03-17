@@ -193,6 +193,8 @@ rule talon_initialize_annotate_database:
         dbloc = OUTDIR / "TALON" / "talon.db",
         annotation_name = existing_annotation.name.split('.')[0],
         genome_name = genome_fasta.name.split('.')[0],
+        end5 = config["talon_5p"],
+        end3 = config["talon_3p"],
     output:
         database = OUTDIR / "TALON" / "talon.db"
     threads: 10
@@ -205,8 +207,8 @@ rule talon_initialize_annotate_database:
             --f {input.annotation} \
             --a {params.annotation_name} \
             --g {params.genome_name} \
-            --5p 500 \
-            --3p 300 \
+            --5p {params.end5} \
+            --3p {params.end3} \
             --o {params.outdir}
         echo "completed init"
         
@@ -228,8 +230,8 @@ rule talon_filter_transcripts:
     params:
         outdir = OUTDIR,
         datasetnames = ",".join([".".join(read.name.split('.')[:-1]) for read in READS]),
-        mincount = config["mincounts"],
-        mindatasets = config["mindatasets"],
+        mincount = config["talon_mincounts"],
+        mindatasets = config["talon_mindatasets"],
         annotation_name = existing_annotation.name.split('.')[0],
     output:
         filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
@@ -299,20 +301,20 @@ rule talon_create_GTF:
         '''
 
 #FLAIR
-# rule flair_bam_to_bed12:
-#     input:
-#         bam = rules.sam_to_bam.output.bam
-#     params:
-#         outdir = lambda wildcards: OUTDIR / "FLAIR" / "BED12" / wildcards.sample
-#     output:
-#         bed12 = OUTDIR / "FLAIR" / "BED12" / "{sample}.bed"
-#     threads: 1
-#     conda:
-#         "envs/flair_conda_env.yaml"
-#     shell:
-#         '''
-#         scripts/bam2Bed12.py --input_bam {input.bam} > {output.bed12}
-#         '''
+rule flair_bam_to_bed12:
+    input:
+        bam = rules.sam_to_bam.output.bam
+    params:
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample
+    output:
+        bed12 = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
+    threads: 1
+    conda:
+        "/exports/sascstudent/dbayraktar/miniconda3/envs/flair"
+    shell:
+        '''
+        scripts/bam2Bed12.py --input_bam {input.bam} > {output.bed12}
+        '''
 
 
 rule flair_align:
@@ -349,7 +351,8 @@ rule flair_correct:
     input:
         genome = genome_fasta,
         annotation= existing_annotation,
-        bed = rules.flair_align.output.bed
+        # bed = rules.flair_align.output.bed
+        bed = rules.flair_bam_to_bed12.output.bed12
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample,
         window = config["flair_correct_window"]
