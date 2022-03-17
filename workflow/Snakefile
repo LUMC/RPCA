@@ -76,9 +76,9 @@ rule sam_to_bam:
     input:
         sam = rules.minimap2_align.output
     params:
-        outdir = lambda wildcards: OUTDIR / "alignments" / "BAM" / wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "alignments" / "bam" / wildcards.sample
     output:
-        bam = OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam"
+        bam = OUTDIR / "alignments" / "bam" / "{sample}_sorted.bam"
     threads: 10
     singularity:
         "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
@@ -324,9 +324,9 @@ rule flair_align:
         genome = genome_fasta,
         fq = READSDIR / "{sample}.fastq"
     params:
-        outdir = lambda wildcards: OUTDIR / "FLAIR" / "BED12" / wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample
     output:
-        bed = OUTDIR / "FLAIR" / "BED12" / "{sample}.bed"
+        bed = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
@@ -396,16 +396,16 @@ rule flair_collapse:
         annotation = existing_annotation,
     params:
         reads = READS,
-        temp_dir = OUTDIR / "FLAIR" / "COLLAPSE" / "collapse_logs",
-        outdir = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse",
+        temp_dir = OUTDIR / "FLAIR" / "collapse" / "collapse_logs",
+        outdir = OUTDIR / "FLAIR" / "collapse" / "flair.collapse",
         window = config["flair_collapse_window"],
         quality = config["flair_collapse_quality"],
         support = config["flair_collapse_support"],
         max_ends = config["flair_collapse_max_ends"],
         opts = config["flair_collapse_optional"]
     output:
-        fa = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.fa",
-        gtf = OUTDIR / "FLAIR" / "COLLAPSE" / "flair.collapse.isoforms.gtf"
+        fa = OUTDIR / "FLAIR" / "collapse" / "flair.collapse.isoforms.fa",
+        gtf = OUTDIR / "FLAIR" / "collapse" / "flair.collapse.isoforms.gtf"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
@@ -630,7 +630,7 @@ rule align_stats:
 
 rule annotation_count:
     input:
-        bams = expand(OUTDIR / "alignments" / "BAM" / "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        bams = expand(OUTDIR / "alignments" / "bam" / "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         annotation = existing_annotation,
     output:
         counts = OUTDIR / "statistics" / "annotation_count.txt"
