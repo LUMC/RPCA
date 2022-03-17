@@ -4,3 +4,4 @@ data
 outfiles
 .snakemake
 /rulegraph.pdf
+/*.out
