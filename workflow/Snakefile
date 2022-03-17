@@ -3,9 +3,10 @@ from pathlib import Path
 
 # Read configuration
 configfile: "config/config.yaml"
+workdir: Path.joinpath(Path(config["results"]), Path(config["run_name"]))
 
 SOURCEDIR = Path(config["sourcedir"])
-OUTDIR = Path(config["results"])
+OUTDIR = Path.joinpath(Path(config["results"]), Path(config["run_name"]))
 READSDIR = Path(config["readsdir"])
 genome_fasta = Path(config["genome_fasta"])
 existing_annotation = Path(config["existing_annotation"])
@@ -16,15 +17,15 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 rule all:
     input:
         # flair
+        #abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        #GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
+        # talon
         # abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
         # GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
-        # talon
-        abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
-        GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
         # oxford
-        # transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
         # alignment stats
-        # stats = OUTDIR / "alignments" / "stats" / "{sample}.stats"
+        #stats = OUTDIR / "alignments" / "stats" / "{sample}.stats"
         # tracking file
         #tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
 
