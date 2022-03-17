@@ -142,8 +142,8 @@ rule talon_label_reads:
     Flag possible internal priming in reads.
     '''
     input:
-        # clean_sam = rules.transcriptclean.output.clean_sam,
-        sam_files = rules.minimap2_align.output.sam_files,
+        clean_sam = rules.transcriptclean.output.clean_sam,
+        # sam_files = rules.minimap2_align.output.sam_files,
         genome = genome_fasta
     params:
         outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample
@@ -156,7 +156,7 @@ rule talon_label_reads:
         '''
         mkdir -p labeled
         talon_label_reads \
-            --f {input.sam_files}\
+            --f {input.clean_sam}\
             --g {input.genome} \
             --t {threads} \
             --ar 20 \
@@ -195,7 +195,7 @@ rule talon_initialize_annotate_database:
         genome_name = genome_fasta.name.split('.')[0],
     output:
         database = OUTDIR / "TALON" / "talon.db"
-    threads: 4
+    threads: 10
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
@@ -227,9 +227,9 @@ rule talon_filter_transcripts:
         db = rules.talon_initialize_annotate_database.output.database
     params:
         outdir = OUTDIR,
-        datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS],
-        mincount= config["mincounts"],
-        mindatasets= config["mindatasets"],
+        datasetnames = ",".join([".".join(read.name.split('.')[:-1]) for read in READS]),
+        mincount = config["mincounts"],
+        mindatasets = config["mindatasets"],
         annotation_name = existing_annotation.name.split('.')[0],
     output:
         filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
