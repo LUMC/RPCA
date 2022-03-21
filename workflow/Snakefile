@@ -24,10 +24,6 @@ rule all:
         # oxford
         # transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
         # bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
-        # alignment stats
-        #stats = OUTDIR / "alignments" / "stats" / "{sample}.stats"
-        # tracking file
-        #tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
 
 
 rule minimap2_align:
@@ -311,12 +307,11 @@ rule flair_bam_to_bed12:
         bed12 = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
     threads: 1
     conda:
-        "/exports/sascstudent/dbayraktar/miniconda3/envs/flair"
+        "envs/bam2bed12.yaml"
     shell:
         '''
         scripts/bam2Bed12.py --input_bam {input.bam} > {output.bed12}
         '''
-
 
 rule flair_align:
     '''
@@ -352,8 +347,8 @@ rule flair_correct:
     input:
         genome = genome_fasta,
         annotation= existing_annotation,
-        bed = rules.flair_align.output.bed
-        # bed = rules.flair_bam_to_bed12.output.bed12
+        # bed = rules.flair_align.output.bed
+        bed = rules.flair_bam_to_bed12.output.bed12
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample,
         window = config["flair_correct_window"]
@@ -478,33 +473,6 @@ rule flair_quantify:
 ContextFilter = """AlnContext: { Ref: "%s", LeftShift: -%d, RightShift: %d, RegexEnd: "[Aa]{%d,}", Stranded: True, Invert: True, Tsv: "alignments/internal_priming_fail.tsv"} """ % (genome_fasta,
 config["oxford_poly_context"], config["oxford_poly_context"], config["oxford_max_poly_run"])
 
-# rule oxford_filter:
-#     '''
-#     Align samples filter for quality
-#     and internal priming, convert to BAM.
-#     '''
-#     input:
-#         genome = genome_fasta,
-#         fq = READSDIR / "{sample}.fastq",
-#         index = rules.build_minimap_index.output.index
-#     params:
-#         min_mq = config["oxford_minimum_mapping_quality"],
-#         flt = lambda x: ContextFilter,
-#         opts = config["minimap2_opts"]
-#     output:
-#         bam_filtered = OUTDIR / "OXFORD" / "filtered"/ "{sample}.bam"
-#     threads: 10
-#     conda:
-#         "envs/oxford_filter.yaml"
-#     shell:
-#         '''
-#         minimap2 -t {threads} -ax splice {params.opts} {input.index} {input.fq}\
-#         | samtools view -q {params.min_mq} -F 2304 -Sb -\
-#         | seqkit bam -j {threads} -x -T '{params.flt}' -\
-#         | samtools sort -@ {threads} -o {output.bam_filtered} -;
-#         samtools index {output.bam_filtered}
-#         '''
-
 rule oxford_filter:
     '''
     Align samples filter for quality
@@ -520,7 +488,6 @@ rule oxford_filter:
         bam_filtered = OUTDIR / "OXFORD" / "filtered"/ "{sample}.bam"
     threads: 10
     conda:
-        # "/exports/sascstudent/dbayraktar/miniconda3/envs/oxford"
         "envs/oxford_filter.yaml"
     shell:
         '''
@@ -722,6 +689,9 @@ rule gffcompare:
 rule venn_diagrams:
     input:
         tracking = rules.gffcompare.output.tracking
+    threads: 1
+    conda:
+        "envs/notebooks.yaml"
     log:
         notebook = OUTDIR / "graphs" / "processed_venndiagrams.ipynb"
     notebook:
@@ -730,6 +700,9 @@ rule venn_diagrams:
 rule alignment_stats:
     input:
         stats = rules.samtool_stats.output.stats
+    threads: 1
+    conda:
+        "envs/notebooks.yaml"
     log:
         notebook = OUTDIR / "graphs" / "processed_align_stats.ipynb"
     notebook:
@@ -741,9 +714,10 @@ rule count_stats:
         flair_count = rules.flair_quantify.output.abundance,
         talon_count = rules.talon_abundance.output.abundance,
         oxford_count = rules.oxford_abundance.output.count_gtf,
+    threads: 1
+    conda:
+        "envs/notebooks.yaml"
     log:
         notebook = OUTDIR / "graphs" / "processed_count_stats.ipynb"
     notebook:
         "notebooks/count_stats.py.ipynb"
-
-

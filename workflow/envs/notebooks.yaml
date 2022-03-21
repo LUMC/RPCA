@@ -1,4 +1,4 @@
-name: notebook
+name: notebooks
 channels:
   - conda-forge
   - anaconda
@@ -6,8 +6,8 @@ channels:
   - defaults
 dependencies:
   - blas=1.0=mkl
-  - ca-certificates=2021.10.8=ha878542_0
-  - certifi=2021.10.8=py38h578d9bd_1
+  - ca-certificates=2020.10.14=0
+  - certifi=2020.6.20=py38_0
   - cycler=0.11.0=pyhd8ed1ab_0
   - freetype=2.10.4=h7ca028e_0
   - icu=67.1=he1b5a44_0
@@ -49,4 +49,4 @@ dependencies:
   - wheel=0.35.1=py_0
   - xz=5.2.5=h7b6447c_0
   - zlib=1.2.11=h7b6447c_3
-prefix: /exports/sascstudent/dbayraktar/miniconda3/envs/notebook
+prefix: /exports/sascstudent/dbayraktar/miniconda3/envs/notebooks
