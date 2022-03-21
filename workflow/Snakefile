@@ -16,14 +16,14 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
 rule all:
     input:
-        # flair
-        #abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
-        #GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
         # talon
         # abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
         # GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
+        # flair
+        abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
         # oxford
-        transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        # transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        # bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         # alignment stats
         #stats = OUTDIR / "alignments" / "stats" / "{sample}.stats"
         # tracking file
@@ -352,8 +352,8 @@ rule flair_correct:
     input:
         genome = genome_fasta,
         annotation= existing_annotation,
-        # bed = rules.flair_align.output.bed
-        bed = rules.flair_bam_to_bed12.output.bed12
+        bed = rules.flair_align.output.bed
+        # bed = rules.flair_bam_to_bed12.output.bed12
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample,
         window = config["flair_correct_window"]
@@ -478,6 +478,33 @@ rule flair_quantify:
 ContextFilter = """AlnContext: { Ref: "%s", LeftShift: -%d, RightShift: %d, RegexEnd: "[Aa]{%d,}", Stranded: True, Invert: True, Tsv: "alignments/internal_priming_fail.tsv"} """ % (genome_fasta,
 config["oxford_poly_context"], config["oxford_poly_context"], config["oxford_max_poly_run"])
 
+# rule oxford_filter:
+#     '''
+#     Align samples filter for quality
+#     and internal priming, convert to BAM.
+#     '''
+#     input:
+#         genome = genome_fasta,
+#         fq = READSDIR / "{sample}.fastq",
+#         index = rules.build_minimap_index.output.index
+#     params:
+#         min_mq = config["oxford_minimum_mapping_quality"],
+#         flt = lambda x: ContextFilter,
+#         opts = config["minimap2_opts"]
+#     output:
+#         bam_filtered = OUTDIR / "OXFORD" / "filtered"/ "{sample}.bam"
+#     threads: 10
+#     conda:
+#         "envs/oxford_filter.yaml"
+#     shell:
+#         '''
+#         minimap2 -t {threads} -ax splice {params.opts} {input.index} {input.fq}\
+#         | samtools view -q {params.min_mq} -F 2304 -Sb -\
+#         | seqkit bam -j {threads} -x -T '{params.flt}' -\
+#         | samtools sort -@ {threads} -o {output.bam_filtered} -;
+#         samtools index {output.bam_filtered}
+#         '''
+
 rule oxford_filter:
     '''
     Align samples filter for quality
@@ -485,23 +512,21 @@ rule oxford_filter:
     '''
     input:
         genome = genome_fasta,
-        fq = READSDIR / "{sample}.fastq",
-        index = rules.build_minimap_index.output.index
+        bam = rules.sam_to_bam.output.bam
     params:
         min_mq = config["oxford_minimum_mapping_quality"],
         flt = lambda x: ContextFilter,
-        opts = config["minimap2_opts"]
     output:
         bam_filtered = OUTDIR / "OXFORD" / "filtered"/ "{sample}.bam"
     threads: 10
     conda:
+        # "/exports/sascstudent/dbayraktar/miniconda3/envs/oxford"
         "envs/oxford_filter.yaml"
     shell:
         '''
-        minimap2 -t {threads} -ax splice {params.opts} {input.index} {input.fq}\
-        | samtools view -q {params.min_mq} -F 2304 -Sb -\
-        | seqkit bam -j {threads} -x -T '{params.flt}' -\
-        | samtools sort -@ {threads} -o {output.bam_filtered} -;
+        samtools view -q {params.min_mq} -F 2304 -b {input.bam} \
+        | seqkit bam -j {threads} -x -T '{params.flt}' \
+        | samtools sort -@ {threads} -o {output.bam_filtered}
         samtools index {output.bam_filtered}
         '''
 
@@ -613,7 +638,7 @@ rule oxford_calc_abundance:
 
 #analyses
 
-rule align_stats:
+rule samtool_stats:
     input:
         bam = rules.sam_to_bam.output.bam,
         reference = genome_fasta,
@@ -632,7 +657,7 @@ rule align_stats:
             {input.bam} | grep ^SN | cut -f 2- > {output.stats}
         '''
 
-rule annotation_count:
+rule subread_featurecounts:
     input:
         bams = expand(OUTDIR / "alignments" / "bam" / "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         annotation = existing_annotation,
@@ -693,38 +718,32 @@ rule gffcompare:
             {input.oxford} {input.flair} {input.talon}
         '''
 
-rule venn_diagram:
+
+rule venn_diagrams:
     input:
         tracking = rules.gffcompare.output.tracking
-    output:
-        all = OUTDIR / "graphs" / "diagram_all.png",
-        novel = OUTDIR / "graphs" / "diagram_novel.png",
-        known = OUTDIR / "graphs" / "diagram_known.png"
-    threads: 1
-    script:
-        '''
-        venndiagrams.py
-        '''
+    log:
+        notebook = OUTDIR / "graphs" / "processed_venndiagrams.ipynb"
+    notebook:
+        "notebooks/venndiagrams.py.ipynb"
 
-rule plot_stats:
+rule alignment_stats:
     input:
-        alignstats = rules.align_stats.output.stats,
-        annocount = rules.annotation_count.output.counts,
+        stats = rules.samtool_stats.output.stats
+    log:
+        notebook = OUTDIR / "graphs" / "processed_align_stats.ipynb"
+    notebook:
+        "notebooks/align_stats.py.ipynb"
+
+rule count_stats:
+    input:
+        subread_count = rules.subread_featurecounts.output.counts,
         flair_count = rules.flair_quantify.output.abundance,
         talon_count = rules.talon_abundance.output.abundance,
         oxford_count = rules.oxford_abundance.output.count_gtf,
-    output:
-        readalign = OUTDIR / "graphs" / "read_alignments.png",
-        mismatch = OUTDIR / "graphs" / "mismatches.png",
-        readlen = OUTDIR / "graphs" / "readlengths.png",
-        anno_count = OUTDIR / "graphs" / "anno_count_sample.png",
-        anno_count_all = OUTDIR / "graphs" / "anno_count_total.png",
-        count_comp = OUTDIR / "graphs" / "counts_per_pipeline.png"
-    threads: 1
-    conda:
-        "envs/notebook.yaml"
-    script:
-        '''
-        stats.py
-        '''
+    log:
+        notebook = OUTDIR / "graphs" / "processed_count_stats.ipynb"
+    notebook:
+        "notebooks/count_stats.py.ipynb"
+
 
