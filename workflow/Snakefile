@@ -1,37 +1,50 @@
+"""
+Dogukan Bayraktar
+Snakemake version 5.32.2
+Workflow for running and comparatively analyzing results from the three
+RNA-seq pipelines TALON, FLAIR, and OXFORD
+"""
 
 from pathlib import Path
 
-# Read configuration
+# All parameters must be set by the user in the configuration file
 configfile: "config/config.yaml"
+# Working directory on device, output will be placed here.
 workdir: Path.joinpath(Path(config["results"]), Path(config["run_name"]))
 
+# Path where you cloned the repository to
 SOURCEDIR = Path(config["sourcedir"])
+# Same as the working directory
 OUTDIR = Path.joinpath(Path(config["results"]), Path(config["run_name"]))
-READSDIR = Path(config["readsdir"])
-genome_fasta = Path(config["genome_fasta"])
+# Location of reference genome in fasta format
+reference_genome = Path(config["genome_fasta"])
+# Location of the annotation file
 existing_annotation = Path(config["existing_annotation"])
-
-
+# Directory containing only the fastq files
+READSDIR = Path(config["readsdir"])
+# List of fastq file names
 READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
+
+
 
 rule all:
     input:
         # talon
-        # abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
-        # GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
+        talon_abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        talon_GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
         # flair
-        abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
+        flair_abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
         # oxford
-        # transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
-        # bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
-
+        ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        # tracking
 
 rule minimap2_align:
-    '''
-    Align reads to reference genome.
-    '''
+    """
+    Align fastq files to reference genome.
+    """
     input:
-        genome = genome_fasta,
+        genome = reference_genome,
         fq = READSDIR / "{sample}.fastq"
     params:
         outdir = OUTDIR,
@@ -53,7 +66,7 @@ rule minimap2_align:
 
 rule build_minimap_index:
     input:
-        genome = genome_fasta
+        genome = reference_genome
     output:
         index = OUTDIR / "alignments" / "genome_index.mmi"
     params:
@@ -62,14 +75,14 @@ rule build_minimap_index:
         'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
     threads: 10
     shell:
-        """
+        '''
         minimap2 -t {threads} {params.opts} -I 1000G -d {output.index} {input.genome}
-        """
+        '''
 
 rule sam_to_bam:
-    '''
+    """"
     Converts SAM to BAM. 
-    '''
+    """
     input:
         sam = rules.minimap2_align.output
     params:
@@ -85,15 +98,19 @@ rule sam_to_bam:
         samtools index {output.bam}
         '''
 
-# TALON
+
+##################
+#      TALON     #
+##################
+
 rule get_SJs_from_gtf:
-    '''
+    """
     Extracts splice junctions from annotation file for use with 
     TranscriptClean.
-    '''
+    """
     input:
         annotation = existing_annotation,
-        genome = genome_fasta
+        genome = reference_genome
     params:
         outdir = OUTDIR
     output:
@@ -110,12 +127,12 @@ rule get_SJs_from_gtf:
         '''
 
 rule transcriptclean:
-    '''
+    """
     Corrects artefactual noncanonical splice junctions.
-    '''
+    """
     input:
         sam_files = rules.minimap2_align.output.sam_files,
-        genome = genome_fasta,
+        genome = reference_genome,
         splicejns = rules.get_SJs_from_gtf.output.splicejns
     params:
         outdir = lambda wildcards: OUTDIR / "TALON" / "cleaned_alignments" / wildcards.sample / wildcards.sample
@@ -135,13 +152,13 @@ rule transcriptclean:
         '''
 
 rule talon_label_reads:
-    '''
+    """
     Flag possible internal priming in reads.
-    '''
+    """
     input:
         clean_sam = rules.transcriptclean.output.clean_sam,
         # sam_files = rules.minimap2_align.output.sam_files,
-        genome = genome_fasta
+        genome = reference_genome
     params:
         outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample
     output:
@@ -161,9 +178,9 @@ rule talon_label_reads:
         '''
 
 rule create_talon_config:
-    '''
+    """
     Create configuration file containing labeled reads locations.
-    '''
+    """
     input:
         labels = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
     params:
@@ -177,11 +194,11 @@ rule create_talon_config:
                 config.write("%s,%s,ONT,%s\n" % (name, name, label))
 
 rule talon_initialize_annotate_database:
-    '''
-    Initialize TALON database from annotation file.
-    Annotate transcripts by comparing them to the database and update 
-    database accordingly afterwards.
-    '''
+    """
+    Initialize TALON database from annotation file. Annotate transcripts
+    by comparing them to the database and update database accordingly
+    afterwards.
+    """
     input:
         annotation = existing_annotation,
         config = rules.create_talon_config.output.config
@@ -189,7 +206,7 @@ rule talon_initialize_annotate_database:
         outdir = OUTDIR / "TALON" / "talon",
         dbloc = OUTDIR / "TALON" / "talon.db",
         annotation_name = existing_annotation.name.split('.')[0],
-        genome_name = genome_fasta.name.split('.')[0],
+        genome_name = reference_genome.name.split('.')[0],
         end5 = config["talon_5p"],
         end3 = config["talon_3p"],
     output:
@@ -219,9 +236,9 @@ rule talon_initialize_annotate_database:
         '''
 
 rule talon_filter_transcripts:
-    '''
+    """
     Create whitelist of transcripts that passed filter.
-    '''
+    """
     input:
         db = rules.talon_initialize_annotate_database.output.database
     params:
@@ -248,16 +265,16 @@ rule talon_filter_transcripts:
         '''
 
 rule talon_abundance:
-    '''
+    """
     Calculate abundance for transcripts in whitelist.
-    '''
+    """
     input:
         db = rules.talon_initialize_annotate_database.output.database,
         filter = rules.talon_filter_transcripts.output.filtered_transcripts
     params:
         outdir = OUTDIR / "TALON" / 'filtered',
         annotation_name = existing_annotation.name.split('.')[0],
-        genome_name= genome_fasta.name.split('.')[0],
+        genome_name= reference_genome.name.split('.')[0],
     output:
         abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv'
     singularity:
@@ -273,16 +290,16 @@ rule talon_abundance:
         '''
 
 rule talon_create_GTF:
-    '''
+    """
     Extract transcripts from whitelist as GTF.
-    '''
+    """
     input:
         db = rules.talon_initialize_annotate_database.output.database,
         filter= rules.talon_filter_transcripts.output.filtered_transcripts
     params:
         outdir = OUTDIR / "TALON" / 'filtered',
         annotation_name = existing_annotation.name.split('.')[0],
-        genome_name= genome_fasta.name.split('.')[0],
+        genome_name= reference_genome.name.split('.')[0],
     output:
         GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
     singularity:
@@ -297,8 +314,15 @@ rule talon_create_GTF:
             --o {params.outdir}
         '''
 
-#FLAIR
+##################
+#      FLAIR     #
+##################
+
 rule flair_bam_to_bed12:
+    """
+    Convert BAM files to BED12 files. Also "smooths" gaps in the
+    alignments.
+    """
     input:
         bam = rules.sam_to_bam.output.bam
     params:
@@ -310,16 +334,16 @@ rule flair_bam_to_bed12:
         "envs/bam2bed12.yaml"
     shell:
         '''
-        scripts/bam2Bed12.py --input_bam {input.bam} > {output.bed12}
+        python workflow/scripts/bam2Bed12.py --input_bam {input.bam} > {output.bed12}
         '''
 
 rule flair_align:
-    '''
+    """
     Aligns samples against reference genome and smooths gaps in
     the alignment.
-    '''
+    """
     input:
-        genome = genome_fasta,
+        genome = reference_genome,
         fq = READSDIR / "{sample}.fastq"
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample
@@ -340,15 +364,15 @@ rule flair_align:
         '''
 
 rule flair_correct:
-    '''
+    """
     Corrects misaligned splice sites using genome annotations
     and/or short-read splice junctions.
-    '''
+    """
     input:
-        genome = genome_fasta,
+        genome = reference_genome,
         annotation= existing_annotation,
-        # bed = rules.flair_align.output.bed
-        bed = rules.flair_bam_to_bed12.output.bed12
+        bed = rules.flair_align.output.bed
+        # bed = rules.flair_bam_to_bed12.output.bed12
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample,
         window = config["flair_correct_window"]
@@ -370,9 +394,9 @@ rule flair_correct:
         '''
 
 rule flair_concatenate:
-    '''
+    """
     Combines BED12 output into one file.
-    '''
+    """
     input:
         bed_corrected = expand(OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
     output:
@@ -386,12 +410,12 @@ rule flair_concatenate:
         '''
 
 rule flair_collapse:
-    '''
+    """
     Defines high-confidence isoforms from corrected reads.
-    '''
+    """
     input:
         bed_concatenated = rules.flair_concatenate.output.bed_concatenated,
-        genome = genome_fasta,
+        genome = reference_genome,
         annotation = existing_annotation,
     params:
         reads = READS,
@@ -427,9 +451,9 @@ rule flair_collapse:
         '''
 
 rule flair_config:
-    '''
+    """
     Creates read manifest.
-    '''
+    """
     input:
         reads = READS
     params:
@@ -443,9 +467,9 @@ rule flair_config:
                 config.write("%s\tcondition\tbatch\t%s\n" % (name, read))
 
 rule flair_quantify:
-    '''
+    """
     Quantify FLAIR isoform usage across samples using minimap2.
-    '''
+    """
     input:
         manifest = rules.flair_config.output.config,
         coll_fasta = rules.flair_collapse.output.fa
@@ -467,19 +491,43 @@ rule flair_quantify:
             --output {output.abundance}
         '''
 
+# generate statistics
 
-#OXFORD
+rule samtool_stats:
+    """
+    Create alignment statistics with samtools.
+    """
+    input:
+        bam = rules.sam_to_bam.output.bam,
+        reference = reference_genome,
+    params:
+        outdir = lambda wildcards: OUTDIR / "alignments" / "stats" / wildcards.sample
+    output:
+        stats = OUTDIR  / "statistics" / "{sample}.stats"
+    threads: 10
+    singularity:
+        "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
+    shell:
+        '''
+        samtools stats \
+            --reference {input.reference} \
+            --threads {threads} \
+            {input.bam} | grep ^SN | cut -f 2- > {output.stats}
+        '''
 
-ContextFilter = """AlnContext: { Ref: "%s", LeftShift: -%d, RightShift: %d, RegexEnd: "[Aa]{%d,}", Stranded: True, Invert: True, Tsv: "alignments/internal_priming_fail.tsv"} """ % (genome_fasta,
+##################
+#      OXFORD    #
+##################
+
+ContextFilter = """AlnContext: { Ref: "%s", LeftShift: -%d, RightShift: %d, RegexEnd: "[Aa]{%d,}", Stranded: True, Invert: True, Tsv: "alignments/internal_priming_fail.tsv"} """ % (reference_genome,
 config["oxford_poly_context"], config["oxford_poly_context"], config["oxford_max_poly_run"])
 
 rule oxford_filter:
-    '''
-    Align samples filter for quality
-    and internal priming, convert to BAM.
-    '''
+    """
+    Filters bam files and checks for internal priming.
+    """
     input:
-        genome = genome_fasta,
+        genome = reference_genome,
         bam = rules.sam_to_bam.output.bam
     params:
         min_mq = config["oxford_minimum_mapping_quality"],
@@ -498,9 +546,9 @@ rule oxford_filter:
         '''
 
 rule oxford_run_stringtie:
-    '''
+    """
     Run stringtie for annotation per sample.
-    '''
+    """
     input:
         bam_filtered = rules.oxford_filter.output.bam_filtered,
         annotation = existing_annotation,
@@ -517,9 +565,9 @@ rule oxford_run_stringtie:
         '''
 
 rule oxford_merge_stringtie:
-    '''
+    """
     Merge sample annotations to single file.
-    '''
+    """
     input:
         gff_files = expand(OUTDIR / "OXFORD" / "stringtie_output" / "{sample}.gff", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         annotation = existing_annotation
@@ -540,9 +588,9 @@ rule oxford_merge_stringtie:
         '''
 
 rule oxford_abundance:
-    '''
+    """
     Run stringtie in expression estimation mode for all samples.
-    '''
+    """
     input:
         bam = rules.oxford_filter.output.bam_filtered,
         merged_gtf = rules.oxford_merge_stringtie.output.merged_gff
@@ -564,10 +612,10 @@ rule oxford_abundance:
         '''
 
 rule oxford_config:
-    '''
+    """
     Create configuration file containing location of abundance
     GTF files.
-    '''
+    """
     input:
         count_gtf = expand(OUTDIR / "OXFORD" / "abundance" / "{sample}.gtf", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
     params:
@@ -581,11 +629,12 @@ rule oxford_config:
                 config.write("%s\t%s\n" % (name, read))
 
 rule oxford_calc_abundance:
-    '''
+    """
     Calculate abundance.
-    '''
+    """
     input:
-        config_file = rules.oxford_config.output.config
+        config_file = rules.oxford_config.output.config,
+        # stats = rules.samtool_stats.output.stats
     params:
         avg_len = config["oxford_avg_len"],
     output:
@@ -603,28 +652,14 @@ rule oxford_calc_abundance:
             -t {output.transcripts}
         '''
 
-#analyses
-
-rule samtool_stats:
-    input:
-        bam = rules.sam_to_bam.output.bam,
-        reference = genome_fasta,
-    params:
-        outdir = lambda wildcards: OUTDIR / "alignments" / "stats" / wildcards.sample
-    output:
-        stats = OUTDIR  / "statistics" / "{sample}.stats"
-    threads: 10
-    singularity:
-        "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
-    shell:
-        '''
-        samtools stats \
-            --reference {input.reference} \
-            --threads {threads} \
-            {input.bam} | grep ^SN | cut -f 2- > {output.stats}
-        '''
+##################
+#    analyses    #
+##################
 
 rule subread_featurecounts:
+    """
+    Calculate counts from the annotation file with Subread.
+    """
     input:
         bams = expand(OUTDIR / "alignments" / "bam" / "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         annotation = existing_annotation,
@@ -646,6 +681,10 @@ rule subread_featurecounts:
         '''
 
 rule combine:
+    """
+    Adds counts from the abundance file to the transcripts in the GTF
+    file.
+    """
     input:
         oxford_count = rules.oxford_calc_abundance.output.transcripts,
         oxford_transcript = rules.oxford_merge_stringtie.output.merged_gff,
@@ -664,6 +703,9 @@ rule combine:
         '''
 
 rule gffcompare:
+    """
+    Run GFFcompare for matching transcripts from the pipelines.
+    """
     input:
         oxford = rules.combine.output.oxford_combined,
         flair = rules.combine.output.flair_combined,
@@ -687,6 +729,9 @@ rule gffcompare:
 
 
 rule venn_diagrams:
+    """
+    Create venn diagrams.
+    """
     input:
         tracking = rules.gffcompare.output.tracking
     threads: 1
@@ -698,6 +743,9 @@ rule venn_diagrams:
         "notebooks/venndiagrams.py.ipynb"
 
 rule alignment_stats:
+    """
+    Create graphs showing alignment statistics.
+    """
     input:
         stats = rules.samtool_stats.output.stats
     threads: 1
@@ -709,6 +757,9 @@ rule alignment_stats:
         "notebooks/align_stats.py.ipynb"
 
 rule count_stats:
+    """
+    Create graphs showing abundance statistics
+    """
     input:
         subread_count = rules.subread_featurecounts.output.counts,
         flair_count = rules.flair_quantify.output.abundance,
