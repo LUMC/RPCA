@@ -1,29 +1,97 @@
+"""
+Dogukan Bayraktar
+Python Version 3.9.7
+Adds transcript counts to GTF files for FLAIR, TALON, and OXFORD.
+"""
 import logging
 
-# Setup argparse
-# import argparse
-# parser = argparse.ArgumentParser()
-# parser.add_argument('gtf', help='Path to GTF file', type=str)
-# parser.add_argument('abundance', help='Path to file containing transcript_id and counts', type=str)
-# parser.add_argument('output', help='Name of combined output GTF', type=str)
-# args = parser.parse_args()
 
+def format_oxford(abundance):
+    """
+    Takes oxford abundance file and produces dictionary with counts per
+    transcript.
 
-def read_abundance(abundace_file):
-    # Read the abundance file, create and populate counts dictionary
-    counts = {}
-    with open(abundace_file) as file:
+    :param abundance: File containing transcript counts
+    :return: transcript_id: total counts
+    """
+    ox_dict = {}
+    with open(abundance, 'r') as file:
+        # Skip header
+        next(file)
         for line in file:
-            line = line.split()
-            # line[0] = transcript id
-            # line[1] = counts
-            counts[line[0]] = line[1]
-    return counts
+            line = line.strip("\n").split(',')
+            transcript_id = line[0]
+            # Can contain an empty string instead of 0
+            counts = sum([int(count) for count in line[1:] if count != ''])
+            ox_dict[transcript_id] = counts
+    return ox_dict
+
+
+def format_talon(abundance):
+    """
+    Takes talon abundance file and produces dictionary with counts per
+    transcript.
+
+    :param abundance: File containing transcript counts
+    :return: transcript_id: total counts
+    """
+    talon_dict = {}
+    with open(abundance, 'r') as file:
+        # Skip header
+        next(file)
+        for line in file:
+            line = line.strip('\n').split('\t')
+            transcript_id = line[3]
+            # Always has a round number
+            counts = sum(map(int, line[11:]))
+            talon_dict[transcript_id] = counts
+    return talon_dict
+
+
+def format_flair(abundance):
+    """
+    Takes flair abundance file and produces dictionary with counts per
+    transcript.
+
+    :param abundance: File containing transcript counts
+    :return: transcript_id: total counts
+    """
+    flair_dict = {}
+    with open(abundance, 'r') as file:
+        # Skip header
+        next(file)
+        for line in file:
+            line = line.strip('\n').split('\t')
+            transcript_id = line[0]
+            # numbers are always rounded but saves them as x.0
+            counts = sum(map(float, line[1:]))
+            flair_dict[transcript_id] = counts
+    return flair_dict
 
 
 def combine(gtf_file, counts, output):
+    """
+    Loops through the GTF file and checks the counts dictionary
+    to add counts to the line and then writes it to a new file.
+
+    Flair combines the transcript id with the gene id for known
+    transcripts using '_' as a delimiter. This can cause problems
+    when the names in the annotation file contain '_'.
+
+    Flair and Oxford can have transcripts present in the GTF file
+    that are missing from the abundance file. This is caused by minimap2
+    mapping ambiguity in the case of flair, and the long-read mode from
+    stringtie for oxford. If there are any missing transcripts these
+    will be written to the missing transcript log.
+
+    :param gtf_file: The GTF file produced by a pipeline.
+    :param counts: Dictionary: key = transcript id, value = counts
+    :param output: Output directory and file name
+    :return: Writes a file to the output param
+    """
     # Setup logging
-    logging.basicConfig(filename=output + '_missing_transcripts.log', level=logging.DEBUG,
+    logging.basicConfig(filename=output + '_missing_transcripts.log',
+                        level=logging.DEBUG,
                         format='%(asctime)s %(levelname)s %(name)s %(message)s')
     logger = logging.getLogger(__name__)
 
@@ -33,35 +101,50 @@ def combine(gtf_file, counts, output):
             # Check if line is a transcript
             if line.split()[2] == 'transcript':
                 try:
-                    # Search for transcript id in counts
-                    count = counts[line.split()[11][1:-2]]
-                except KeyError as err:
+                    # Check for transcript id in counts
+                    transcript_id = line.split()[11][1:-2]
+                    count = counts[transcript_id]
+                except KeyError:
                     # Transcript is missing from the abundance file
-                    count = '0'
-                    # Add missing transcript id to missing_transcripts.log
-                    logger.error(err)
+                    try:
+                        # This is for the flair '_' delimiter issue
+                        gene_id = line.split()[9][1:-2]
+                        new_transcript_id = transcript_id + '_' + gene_id
+                        count = counts[new_transcript_id]
+                    except KeyError as err:
+                        # transcript is actually missing
+                        # Add missing transcript id to missing transcripts.log
+                        logger.error(err)
+                        count = 0
                 # Add transcript count to end of line and write to file
-                outfile.write(line[:-1] + ' ' + 'TPM' + ' ' + '"' + count + '"' + ';' + '\n')
+                # counts are not in TPM, hijacking the column for use with GFFcompare
+                outfile.write(line[:-1] + ' ' + 'TPM' + ' ' + '"' + str(count) + '"' + ';' + '\n')
             else:
                 # Line is not a transcript
                 outfile.write(line)
 
 
 def main():
-    abundance_files = [snakemake.input.oxford_count,
-                       snakemake.input.flair_count,
-                       snakemake.input.talon_count]
-    transcript_files = [snakemake.input.oxford_transcripts,
-                        snakemake.input.flair_transcripts,
-                        snakemake.input.talon_transcripts]
-    output_files = [snakemake.output.oxford_combined,
-                    snakemake.output.flair_combined,
-                    snakemake.output.talon_combined]
+    """
+    Takes abundance file and passes it to a format function. The
+    resulting dictionary is passed to combine. Combine produces a new
+    GTF that has counts for transcripts.
+    :return: -
+    """
+    flair_abundance = snakemake.input.flair_count
+    flair_gtf = snakemake.input.flair.flair_transcripts
+    flair_dict = format_flair(flair_abundance)
+    combine(flair_gtf, flair_dict, snakemake.output.flair_combined)
 
-    for abundance, transcript, output in zip(abundance_files, transcript_files, output_files):
-        counts_dict = read_abundance(abundance)
-        combine(transcript, counts_dict, output)
-        counts_dict.clear()
+    ox_abundance = snakemake.input.oxford_count
+    ox_gtf = snakemake.input.oxford_transcript
+    ox_dict = format_oxford(ox_abundance)
+    combine(ox_gtf, ox_dict, snakemake.output.oxford_combined)
+
+    talon_abundance = snakemake.input.talon_count
+    talon_gtf = snakemake.input.talon_transcripts
+    talon_dict = format_talon(talon_abundance)
+    combine(talon_gtf, talon_dict, snakemake.output.talon_combined)
 
 
 main()
