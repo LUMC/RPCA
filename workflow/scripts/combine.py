@@ -12,7 +12,7 @@ def format_oxford(abundance):
     transcript.
 
     :param abundance: File containing transcript counts
-    :return: transcript_id: total counts
+    :return: Dictionary: key = transcript id, value = counts
     """
     ox_dict = {}
     with open(abundance, 'r') as file:
@@ -33,7 +33,7 @@ def format_talon(abundance):
     transcript.
 
     :param abundance: File containing transcript counts
-    :return: transcript_id: total counts
+    :return: Dictionary: key = transcript id, value = counts
     """
     talon_dict = {}
     with open(abundance, 'r') as file:
@@ -54,7 +54,7 @@ def format_flair(abundance):
     transcript.
 
     :param abundance: File containing transcript counts
-    :return: transcript_id: total counts
+    :return: Dictionary: key = transcript id, value = counts
     """
     flair_dict = {}
     with open(abundance, 'r') as file:
@@ -63,7 +63,7 @@ def format_flair(abundance):
         for line in file:
             line = line.strip('\n').split('\t')
             transcript_id = line[0]
-            # numbers are always rounded but saves them as x.0
+            # Numbers are always rounded but saves them as x.0
             counts = sum(map(float, line[1:]))
             flair_dict[transcript_id] = counts
     return flair_dict
