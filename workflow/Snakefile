@@ -25,6 +25,9 @@ READSDIR = Path(config["readsdir"])
 # List of fastq file names
 READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 
+# Sample names must be unique
+if len(READS) != len(set(READS)):
+    raise RuntimeError("\n*** Samplenames are NOT unique. Cannot continue! exiting. ***\n")
 
 
 rule all:
