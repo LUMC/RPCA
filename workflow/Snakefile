@@ -9,13 +9,15 @@ from pathlib import Path
 
 # All parameters must be set by the user in the configuration file
 configfile: "config/config.yaml"
-# Working directory on device, output will be placed here.
-workdir: Path.joinpath(Path(config["results"]), Path(config["run_name"]))
+# Working directory
+workdir: Path.joinpath(Path(config["run_name"]))
+# Location of snakefile relative to workdir
+SNAKEFILE = Path(workflow.snakefile)
 
 # Path where you cloned the repository to
 SOURCEDIR = Path(config["sourcedir"])
-# Same as the working directory
-OUTDIR = Path.joinpath(Path(config["results"]), Path(config["run_name"]))
+# output goes here
+OUTDIR = Path.joinpath(Path(config["run_name"]), Path(config["results"]))
 # Location of reference genome in fasta format
 reference_genome = Path(config["genome_fasta"])
 # Location of the annotation file
@@ -328,6 +330,7 @@ rule flair_bam_to_bed12:
         bam = rules.sam_to_bam.output.bam
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample,
+        scriptpath = SNAKEFILE.parent / "scripts" / "bam2Bed12.py"
     output:
         bed12 = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
     threads: 1
@@ -335,33 +338,7 @@ rule flair_bam_to_bed12:
         "envs/bam2bed12.yaml"
     shell:
         '''
-        python bam2Bed12.py --input_bam {input.bam} > {output.bed12}
-        '''
-
-rule flair_align:
-    """
-    Aligns samples against reference genome and smooths gaps in
-    the alignment.
-    """
-    input:
-        genome = reference_genome,
-        fq = READSDIR / "{sample}.fastq"
-    params:
-        outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample
-    output:
-        bed = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
-    threads: 10
-    singularity:
-        'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
-    shell:
-        '''
-        flair.py align \
-            --genome {input.genome}\
-            --reads {input.fq}\
-            --threads {threads}\
-            --nvrna \
-            --version1.3 \
-            --output {params.outdir}
+        {params.scriptpath} --input_bam {input.bam} > {output.bed12}
         '''
 
 rule flair_correct:
@@ -372,8 +349,8 @@ rule flair_correct:
     input:
         genome = reference_genome,
         annotation= existing_annotation,
-        bed = rules.flair_align.output.bed
-        # bed = rules.flair_bam_to_bed12.output.bed12
+        # bed = rules.flair_align.output.bed
+        bed = rules.flair_bam_to_bed12.output.bed12
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample,
         window = config["flair_correct_window"]
@@ -693,6 +670,8 @@ rule combine:
         talon_transcripts = rules.talon_create_GTF.output.GTF,
         flair_count = rules.flair_quantify.output.abundance,
         flair_transcripts = rules.flair_collapse.output.gtf,
+    params:
+        scriptpath = SNAKEFILE.parent / "scripts" / "combine.py"
     output:
         oxford_combined = OUTDIR / "combined" / "oxford_counts.gtf",
         flair_combined = OUTDIR / "combined" / "flair_counts.gtf",
@@ -700,7 +679,7 @@ rule combine:
     threads: 1
     script:
         '''
-        scripts/combine.py 
+        {params.scriptpath} 
         '''
 
 rule gffcompare:
