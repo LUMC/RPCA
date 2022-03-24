@@ -33,14 +33,27 @@ if len(READS) != len(set(READS)):
 rule all:
     input:
         # talon
-        talon_abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
-        talon_GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
+        # talon_abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        # talon_GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
         # flair
-        flair_abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
+        # flair_abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
         # oxford
-        ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
-        ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
-        # tracking
+        # ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        # ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        # analyses
+        all = OUTDIR / "graphs" / "all_overlap_diagram.png",
+        known = OUTDIR / "graphs" / "known_overlap_diagram.png",
+        novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        align= OUTDIR / "graphs" / "read_alignments.png",
+        mismatch= OUTDIR / "graphs" / "read_mismatches.png",
+        readlen= OUTDIR / "graphs" / "read_lengths.png",
+        total= OUTDIR / "graphs" / "total_count_per_sample.png",
+        per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
+        comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
+
+
+
+
 
 rule minimap2_align:
     """
@@ -53,7 +66,7 @@ rule minimap2_align:
         outdir = OUTDIR,
         opts = config["minimap2_opts"]
     output:
-        sam_files = OUTDIR / "alignments" /"{sample}.sam"
+        sam_files = OUTDIR / "alignments" / "{sample}.sam"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
@@ -65,21 +78,6 @@ rule minimap2_align:
             {params.opts} \
             {input.genome} \
             {input.fq} > {output.sam_files}
-        '''
-
-rule build_minimap_index:
-    input:
-        genome = reference_genome
-    output:
-        index = OUTDIR / "alignments" / "genome_index.mmi"
-    params:
-        opts = config["minimap_index_opts"]
-    singularity:
-        'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
-    threads: 10
-    shell:
-        '''
-        minimap2 -t {threads} {params.opts} -I 1000G -d {output.index} {input.genome}
         '''
 
 rule sam_to_bam:
@@ -140,7 +138,7 @@ rule transcriptclean:
     params:
         outdir = lambda wildcards: OUTDIR / "TALON" / "cleaned_alignments" / wildcards.sample / wildcards.sample
     output:
-        clean_sam = OUTDIR / "TALON" /"cleaned_alignments" / "{sample}" / "{sample}_clean.sam"
+        clean_sam = OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam"
     threads: 10
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
@@ -730,13 +728,16 @@ rule gffcompare:
             {input.oxford} {input.flair} {input.talon}
         '''
 
-
 rule venn_diagrams:
     """
     Create venn diagrams.
     """
     input:
         tracking = rules.gffcompare.output.tracking
+    output:
+        all = OUTDIR / "graphs" / "all_overlap_diagram.png",
+        known = OUTDIR / "graphs" / "known_overlap_diagram.png",
+        novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -751,6 +752,10 @@ rule alignment_stats:
     """
     input:
         stats = rules.samtool_stats.output.stats
+    output:
+        align = OUTDIR / "graphs" / "read_alignments.png",
+        mismatch = OUTDIR / "graphs" / "read_mismatches.png",
+        readlen = OUTDIR / "graphs" / "read_lengths.png",
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -768,6 +773,10 @@ rule count_stats:
         flair_count = rules.flair_quantify.output.abundance,
         talon_count = rules.talon_abundance.output.abundance,
         oxford_count = rules.oxford_abundance.output.count_gtf,
+    output:
+        total = OUTDIR / "graphs" / "total_count_per_sample.png",
+        per_feature = OUTDIR / "graphs" / "counts_per_feature.png",
+        comp = OUTDIR / "graphs" / "counts_per_pipeline.png",
     threads: 1
     conda:
         "envs/notebooks.yaml"
