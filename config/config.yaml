@@ -7,6 +7,9 @@ readsdir: "/exports/sascstudent/dbayraktar/Data/selas_data/filter"
 # results are stored here
 results: "results"
 
+# run name
+run_name: "oxford_test"
+
 # Input genome
 genome_fasta: "/exports/sascstudent/dbayraktar/Data/selas_data/WT_AdV-lumc007_WGS-headeredit.fa"
 
@@ -18,9 +21,13 @@ minimap2_opts: "-uf -k14"
 minimap_index_opts: " -k14 "
 
 # TALON parameters
-mincounts: "5"
+talon_mincounts: "1"
 
-mindatasets: "2"
+talon_mindatasets: "1"
+
+talon_5p: 500
+
+talon_3p: 300
 
 # FLAIR parameters
 
@@ -34,7 +41,7 @@ flair_collapse_support: 3
 
 flair_collapse_max_ends: 2
 
-flair_collapse_optional: " --isoformtss "
+flair_collapse_optional: " "
 
 flair_abundance_quality: 1
 
