@@ -1,10 +1,10 @@
 """
 Dogukan Bayraktar
-Snakemake version 5.32.2
+Snakemake version 7.3.1
 Workflow for running and comparatively analyzing results from the three
 RNA-seq pipelines TALON, FLAIR, and OXFORD
 """
-
+# python strings as paths do not work with pathlib objects
 from pathlib import Path
 
 # All parameters must be set by the user in the configuration file
@@ -118,7 +118,7 @@ rule get_SJs_from_gtf:
         splicejns = OUTDIR / "TALON" / "cleaned_alignments" / "spliceJns.txt"
     threads: 1
     singularity:
-        "docker://biocontainers/transcriptclean:v2.0.2_cv1"
+        "biocontainers/transcriptclean:v2.0.2_cv1"
     shell:
         '''
         get_SJs_from_gtf \
@@ -141,7 +141,7 @@ rule transcriptclean:
         clean_sam = OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam"
     threads: 10
     singularity:
-        "docker://biocontainers/transcriptclean:v2.0.2_cv1"
+        "biocontainers/transcriptclean:v2.0.2_cv1"
     shell:
         '''
         TranscriptClean \
@@ -166,7 +166,7 @@ rule talon_label_reads:
         labeled_sam = OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",
     threads: 10
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "biocontainers/talon:v5.0_cv1"
     shell:
         '''
         mkdir -p labeled
@@ -214,7 +214,7 @@ rule talon_initialize_annotate_database:
         database = OUTDIR / "TALON" / "talon.db"
     threads: 10
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "biocontainers/talon:v5.0_cv1"
     shell:
         '''
         
@@ -252,7 +252,7 @@ rule talon_filter_transcripts:
         filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
     threads: 1
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "biocontainers/talon:v5.0_cv1"
     shell:
         '''
         talon_filter_transcripts \
@@ -279,7 +279,7 @@ rule talon_abundance:
     output:
         abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv'
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "biocontainers/talon:v5.0_cv1"
     shell:
         '''
         talon_abundance \
@@ -304,7 +304,7 @@ rule talon_create_GTF:
     output:
         GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "biocontainers/talon:v5.0_cv1"
     shell:
         '''
         talon_create_GTF \
@@ -327,7 +327,7 @@ rule flair_bam_to_bed12:
     input:
         bam = rules.sam_to_bam.output.bam
     params:
-        outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample,
     output:
         bed12 = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
     threads: 1
@@ -335,7 +335,7 @@ rule flair_bam_to_bed12:
         "envs/bam2bed12.yaml"
     shell:
         '''
-        python workflow/scripts/bam2Bed12.py --input_bam {input.bam} > {output.bed12}
+        python bam2Bed12.py --input_bam {input.bam} > {output.bed12}
         '''
 
 rule flair_align:
@@ -668,10 +668,10 @@ rule subread_featurecounts:
         counts = OUTDIR / "statistics" / "annotation_count.txt"
     threads: 10
     singularity:
-        "docker://"
+        "docker://quay.io/biocontainers/subread:2.0.1--h7132678_2"
     shell:
         '''
-        subread featurecounts \
+        featureCounts \
             {input.bams} \
             -T {threads} \
             -a {input.annotation} \
@@ -700,7 +700,7 @@ rule combine:
     threads: 1
     script:
         '''
-        combine.py 
+        scripts/combine.py 
         '''
 
 rule gffcompare:
@@ -716,7 +716,7 @@ rule gffcompare:
         tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
     threads: 1
     singularity:
-        "docker://quay.io/biocontainers/gffcompare:0.11.2--h7d875b9_2"
+        "docker://quay.io/biocontainers/gffcompare:0.11.2--h9f5acd7_3"
     shell:
         '''
         gffcompare \
@@ -751,7 +751,8 @@ rule alignment_stats:
     Create graphs showing alignment statistics.
     """
     input:
-        stats = rules.samtool_stats.output.stats
+        # stats = rules.samtool_stats.output.stats
+        stats = expand(OUTDIR / "statistics" / "{sample}.stats" , sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
     output:
         align = OUTDIR / "graphs" / "read_alignments.png",
         mismatch = OUTDIR / "graphs" / "read_mismatches.png",
@@ -772,7 +773,7 @@ rule count_stats:
         subread_count = rules.subread_featurecounts.output.counts,
         flair_count = rules.flair_quantify.output.abundance,
         talon_count = rules.talon_abundance.output.abundance,
-        oxford_count = rules.oxford_abundance.output.count_gtf,
+        oxford_count = rules.oxford_calc_abundance.output.transcripts,
     output:
         total = OUTDIR / "graphs" / "total_count_per_sample.png",
         per_feature = OUTDIR / "graphs" / "counts_per_feature.png",
