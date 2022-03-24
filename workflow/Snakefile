@@ -33,14 +33,27 @@ if len(READS) != len(set(READS)):
 rule all:
     input:
         # talon
-        talon_abundance = OUTDIR + "TALON" + 'filtered_talon_abundance_filtered.tsv',
-        talon_GTF = OUTDIR + "TALON" + 'filtered_talon.gtf',
+        # talon_abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
+        # talon_GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
         # flair
-        flair_abundance = OUTDIR + "FLAIR" + "quantify" + "flair_counts_matrix.tsv",
+        # flair_abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
         # oxford
-        ox_transcripts = OUTDIR + "OXFORD" + "abundance" + "transcript_count_matrix.csv",
-        ox_bam_filtered = expand(OUTDIR + "OXFORD" + "filtered" + "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
-        # tracking
+        # ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        # ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        # analyses
+        all = OUTDIR / "graphs" / "all_overlap_diagram.png",
+        known = OUTDIR / "graphs" / "known_overlap_diagram.png",
+        novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        align= OUTDIR / "graphs" / "read_alignments.png",
+        mismatch= OUTDIR / "graphs" / "read_mismatches.png",
+        readlen= OUTDIR / "graphs" / "read_lengths.png",
+        total= OUTDIR / "graphs" / "total_count_per_sample.png",
+        per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
+        comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
+
+
+
+
 
 rule minimap2_align:
     """
@@ -48,12 +61,12 @@ rule minimap2_align:
     """
     input:
         genome = reference_genome,
-        fq = READSDIR + "{sample}.fastq"
+        fq = READSDIR / "{sample}.fastq"
     params:
         outdir = OUTDIR,
         opts = config["minimap2_opts"]
     output:
-        sam_files = OUTDIR + "alignments" + "{sample}.sam"
+        sam_files = OUTDIR / "alignments" / "{sample}.sam"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
@@ -74,9 +87,9 @@ rule sam_to_bam:
     input:
         sam = rules.minimap2_align.output
     params:
-        outdir = lambda wildcards: OUTDIR + "alignments" + "bam" + wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "alignments" / "bam" / wildcards.sample
     output:
-        bam = OUTDIR + "alignments" + "bam" + "{sample}_sorted.bam"
+        bam = OUTDIR / "alignments" / "bam" / "{sample}_sorted.bam"
     threads: 10
     singularity:
         "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
@@ -102,7 +115,7 @@ rule get_SJs_from_gtf:
     params:
         outdir = OUTDIR
     output:
-        splicejns = OUTDIR + "TALON" + "cleaned_alignments" + "spliceJns.txt"
+        splicejns = OUTDIR / "TALON" / "cleaned_alignments" / "spliceJns.txt"
     threads: 1
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
@@ -123,9 +136,9 @@ rule transcriptclean:
         genome = reference_genome,
         splicejns = rules.get_SJs_from_gtf.output.splicejns
     params:
-        outdir = lambda wildcards: OUTDIR + "TALON" + "cleaned_alignments" + wildcards.sample + wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "TALON" / "cleaned_alignments" / wildcards.sample / wildcards.sample
     output:
-        clean_sam = OUTDIR + "TALON" /"cleaned_alignments" + "{sample}" + "{sample}_clean.sam"
+        clean_sam = OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam"
     threads: 10
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
@@ -148,9 +161,9 @@ rule talon_label_reads:
         # sam_files = rules.minimap2_align.output.sam_files,
         genome = reference_genome
     params:
-        outdir = lambda wildcards: OUTDIR + "TALON" + "labeled" + wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample
     output:
-        labeled_sam = OUTDIR + "TALON" + "labeled" + "{sample}_labeled.sam",
+        labeled_sam = OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",
     threads: 10
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
@@ -170,11 +183,11 @@ rule create_talon_config:
     Create configuration file containing labeled reads locations.
     """
     input:
-        labels = expand(OUTDIR + "TALON" + "labeled" + "{sample}_labeled.sam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        labels = expand(OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
     params:
         datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
-        config = OUTDIR + "TALON" + "config.csv",
+        config = OUTDIR / "TALON" / "config.csv",
     threads: 1
     run:
         for label, name in zip(input.labels, params.datasetnames):
@@ -191,14 +204,14 @@ rule talon_initialize_annotate_database:
         annotation = existing_annotation,
         config = rules.create_talon_config.output.config
     params:
-        outdir = OUTDIR + "TALON" + "talon",
-        dbloc = OUTDIR + "TALON" + "talon.db",
+        outdir = OUTDIR / "TALON" / "talon",
+        dbloc = OUTDIR / "TALON" / "talon.db",
         annotation_name = existing_annotation.name.split('.')[0],
         genome_name = reference_genome.name.split('.')[0],
         end5 = config["talon_5p"],
         end3 = config["talon_3p"],
     output:
-        database = OUTDIR + "TALON" + "talon.db"
+        database = OUTDIR / "TALON" / "talon.db"
     threads: 10
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
@@ -236,7 +249,7 @@ rule talon_filter_transcripts:
         mindatasets = config["talon_mindatasets"],
         annotation_name = existing_annotation.name.split('.')[0],
     output:
-        filtered_transcripts = OUTDIR + "TALON" + "filtered_transcripts.csv"
+        filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
     threads: 1
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
@@ -260,11 +273,11 @@ rule talon_abundance:
         db = rules.talon_initialize_annotate_database.output.database,
         filter = rules.talon_filter_transcripts.output.filtered_transcripts
     params:
-        outdir = OUTDIR + "TALON" + 'filtered',
+        outdir = OUTDIR / "TALON" / 'filtered',
         annotation_name = existing_annotation.name.split('.')[0],
         genome_name= reference_genome.name.split('.')[0],
     output:
-        abundance = OUTDIR + "TALON" + 'filtered_talon_abundance_filtered.tsv'
+        abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv'
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
@@ -285,11 +298,11 @@ rule talon_create_GTF:
         db = rules.talon_initialize_annotate_database.output.database,
         filter= rules.talon_filter_transcripts.output.filtered_transcripts
     params:
-        outdir = OUTDIR + "TALON" + 'filtered',
+        outdir = OUTDIR / "TALON" / 'filtered',
         annotation_name = existing_annotation.name.split('.')[0],
         genome_name= reference_genome.name.split('.')[0],
     output:
-        GTF = OUTDIR + "TALON" + 'filtered_talon.gtf'
+        GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
@@ -314,9 +327,9 @@ rule flair_bam_to_bed12:
     input:
         bam = rules.sam_to_bam.output.bam
     params:
-        outdir = lambda wildcards: OUTDIR + "FLAIR" + "bed12" + wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample
     output:
-        bed12 = OUTDIR + "FLAIR" + "bed12" + "{sample}.bed"
+        bed12 = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
     threads: 1
     conda:
         "envs/bam2bed12.yaml"
@@ -332,11 +345,11 @@ rule flair_align:
     """
     input:
         genome = reference_genome,
-        fq = READSDIR + "{sample}.fastq"
+        fq = READSDIR / "{sample}.fastq"
     params:
-        outdir = lambda wildcards: OUTDIR + "FLAIR" + "bed12" + wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample
     output:
-        bed = OUTDIR + "FLAIR" + "bed12" + "{sample}.bed"
+        bed = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
@@ -362,10 +375,10 @@ rule flair_correct:
         bed = rules.flair_align.output.bed
         # bed = rules.flair_bam_to_bed12.output.bed12
     params:
-        outdir = lambda wildcards: OUTDIR + "FLAIR" + "corrected" + wildcards.sample + wildcards.sample,
+        outdir = lambda wildcards: OUTDIR / "FLAIR" / "corrected" / wildcards.sample / wildcards.sample,
         window = config["flair_correct_window"]
     output:
-        bed_corrected = OUTDIR + "FLAIR" + "corrected" + "{sample}" + "{sample}_all_corrected.bed"
+        bed_corrected = OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
@@ -386,9 +399,9 @@ rule flair_concatenate:
     Combines BED12 output into one file.
     """
     input:
-        bed_corrected = expand(OUTDIR + "FLAIR" + "corrected" + "{sample}" + "{sample}_all_corrected.bed", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
+        bed_corrected = expand(OUTDIR / "FLAIR" / "corrected" / "{sample}" / "{sample}_all_corrected.bed", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
     output:
-        bed_concatenated = OUTDIR + "FLAIR" + "concatenated_all_corrected.bed"
+        bed_concatenated = OUTDIR / "FLAIR" / "concatenated_all_corrected.bed"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
@@ -407,16 +420,16 @@ rule flair_collapse:
         annotation = existing_annotation,
     params:
         reads = READS,
-        temp_dir = OUTDIR + "FLAIR" + "collapse" + "collapse_logs",
-        outdir = OUTDIR + "FLAIR" + "collapse" + "flair.collapse",
+        temp_dir = OUTDIR / "FLAIR" / "collapse" / "collapse_logs",
+        outdir = OUTDIR / "FLAIR" / "collapse" / "flair.collapse",
         window = config["flair_collapse_window"],
         quality = config["flair_collapse_quality"],
         support = config["flair_collapse_support"],
         max_ends = config["flair_collapse_max_ends"],
         opts = config["flair_collapse_optional"]
     output:
-        fa = OUTDIR + "FLAIR" + "collapse" + "flair.collapse.isoforms.fa",
-        gtf = OUTDIR + "FLAIR" + "collapse" + "flair.collapse.isoforms.gtf"
+        fa = OUTDIR / "FLAIR" / "collapse" / "flair.collapse.isoforms.fa",
+        gtf = OUTDIR / "FLAIR" / "collapse" / "flair.collapse.isoforms.gtf"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
@@ -447,7 +460,7 @@ rule flair_config:
     params:
         datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
-        config = OUTDIR + "FLAIR" + "manifest.tsv"
+        config = OUTDIR / "FLAIR" / "manifest.tsv"
     threads: 1
     run:
         for read, name in zip(input.reads, params.datasetnames):
@@ -464,7 +477,7 @@ rule flair_quantify:
     params:
         quality = config["flair_abundance_quality"]
     output:
-        abundance = OUTDIR + "FLAIR" + "quantify" + "flair_counts_matrix.tsv"
+        abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv"
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
@@ -489,9 +502,9 @@ rule samtool_stats:
         bam = rules.sam_to_bam.output.bam,
         reference = reference_genome,
     params:
-        outdir = lambda wildcards: OUTDIR + "alignments" + "stats" + wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "alignments" / "stats" / wildcards.sample
     output:
-        stats = OUTDIR  + "statistics" + "{sample}.stats"
+        stats = OUTDIR  / "statistics" / "{sample}.stats"
     threads: 10
     singularity:
         "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
@@ -521,7 +534,7 @@ rule oxford_filter:
         min_mq = config["oxford_minimum_mapping_quality"],
         flt = lambda x: ContextFilter,
     output:
-        bam_filtered = OUTDIR + "OXFORD" + "filtered"/ "{sample}.bam"
+        bam_filtered = OUTDIR / "OXFORD" / "filtered"/ "{sample}.bam"
     threads: 10
     conda:
         "envs/oxford_filter.yaml"
@@ -543,7 +556,7 @@ rule oxford_run_stringtie:
     params:
         opts = config["oxford_stringtie_opts"],
     output:
-        gff = OUTDIR + "OXFORD" + "stringtie_output" + "{sample}.gff",
+        gff = OUTDIR / "OXFORD" / "stringtie_output" / "{sample}.gff",
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     threads: 10
@@ -557,12 +570,12 @@ rule oxford_merge_stringtie:
     Merge sample annotations to single file.
     """
     input:
-        gff_files = expand(OUTDIR + "OXFORD" + "stringtie_output" + "{sample}.gff", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        gff_files = expand(OUTDIR / "OXFORD" / "stringtie_output" / "{sample}.gff", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         annotation = existing_annotation
     params:
         opts = config["oxford_merge_opts"],
     output:
-        merged_gff = OUTDIR + "OXFORD" + "stringtie_output" + "oxford_merged.gtf"
+        merged_gff = OUTDIR / "OXFORD" / "stringtie_output" / "oxford_merged.gtf"
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     threads: 10
@@ -585,7 +598,7 @@ rule oxford_abundance:
     params:
         opts = config["oxford_count_opts"],
     output:
-        count_gtf = OUTDIR + "OXFORD" + "abundance" + "{sample}.gtf"
+        count_gtf = OUTDIR / "OXFORD" / "abundance" / "{sample}.gtf"
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     threads: 10
@@ -605,11 +618,11 @@ rule oxford_config:
     GTF files.
     """
     input:
-        count_gtf = expand(OUTDIR + "OXFORD" + "abundance" + "{sample}.gtf", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        count_gtf = expand(OUTDIR / "OXFORD" / "abundance" / "{sample}.gtf", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
     params:
         datasetnames= [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
-        config = OUTDIR + "OXFORD" + "abundance" + "oxford_config.tab"
+        config = OUTDIR / "OXFORD" / "abundance" / "oxford_config.tab"
     threads: 1
     run:
         for read, name in zip(input.count_gtf, params.datasetnames):
@@ -626,8 +639,8 @@ rule oxford_calc_abundance:
     params:
         avg_len = config["oxford_avg_len"],
     output:
-        transcripts = OUTDIR + "OXFORD" + "abundance" + "transcript_count_matrix.csv",
-        genes = OUTDIR + "OXFORD" + "abundance" + "gene_count_matrix.csv",
+        transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        genes = OUTDIR / "OXFORD" / "abundance" / "gene_count_matrix.csv",
     threads: 10
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
@@ -649,10 +662,10 @@ rule subread_featurecounts:
     Calculate counts from the annotation file with Subread.
     """
     input:
-        bams = expand(OUTDIR + "alignments" + "bam" + "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        bams = expand(OUTDIR / "alignments" / "bam" / "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         annotation = existing_annotation,
     output:
-        counts = OUTDIR + "statistics" + "annotation_count.txt"
+        counts = OUTDIR / "statistics" / "annotation_count.txt"
     threads: 10
     singularity:
         "docker://"
@@ -681,9 +694,9 @@ rule combine:
         flair_count = rules.flair_quantify.output.abundance,
         flair_transcripts = rules.flair_collapse.output.gtf,
     output:
-        oxford_combined = OUTDIR + "combined" + "oxford_counts.gtf",
-        flair_combined = OUTDIR + "combined" + "flair_counts.gtf",
-        talon_combined = OUTDIR + "combined" + "talon_counts.gtf",
+        oxford_combined = OUTDIR / "combined" / "oxford_counts.gtf",
+        flair_combined = OUTDIR / "combined" / "flair_counts.gtf",
+        talon_combined = OUTDIR / "combined" / "talon_counts.gtf",
     threads: 1
     script:
         '''
@@ -700,7 +713,7 @@ rule gffcompare:
         talon = rules.combine.output.talon_combined,
         annotation = existing_annotation
     output:
-        tracking = OUTDIR + "gffcompare" + "gffcmp.tracking"
+        tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
     threads: 1
     singularity:
         "docker://quay.io/biocontainers/gffcompare:0.11.2--h7d875b9_2"
@@ -715,18 +728,21 @@ rule gffcompare:
             {input.oxford} {input.flair} {input.talon}
         '''
 
-
 rule venn_diagrams:
     """
     Create venn diagrams.
     """
     input:
         tracking = rules.gffcompare.output.tracking
+    output:
+        all = OUTDIR / "graphs" / "all_overlap_diagram.png",
+        known = OUTDIR / "graphs" / "known_overlap_diagram.png",
+        novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
     threads: 1
     conda:
         "envs/notebooks.yaml"
     log:
-        notebook = OUTDIR + "graphs" + "processed_venndiagrams.ipynb"
+        notebook = OUTDIR / "graphs" / "processed_venndiagrams.ipynb"
     notebook:
         "notebooks/venndiagrams.py.ipynb"
 
@@ -736,11 +752,15 @@ rule alignment_stats:
     """
     input:
         stats = rules.samtool_stats.output.stats
+    output:
+        align = OUTDIR / "graphs" / "read_alignments.png",
+        mismatch = OUTDIR / "graphs" / "read_mismatches.png",
+        readlen = OUTDIR / "graphs" / "read_lengths.png",
     threads: 1
     conda:
         "envs/notebooks.yaml"
     log:
-        notebook = OUTDIR + "graphs" + "processed_align_stats.ipynb"
+        notebook = OUTDIR / "graphs" / "processed_align_stats.ipynb"
     notebook:
         "notebooks/align_stats.py.ipynb"
 
@@ -753,10 +773,14 @@ rule count_stats:
         flair_count = rules.flair_quantify.output.abundance,
         talon_count = rules.talon_abundance.output.abundance,
         oxford_count = rules.oxford_abundance.output.count_gtf,
+    output:
+        total = OUTDIR / "graphs" / "total_count_per_sample.png",
+        per_feature = OUTDIR / "graphs" / "counts_per_feature.png",
+        comp = OUTDIR / "graphs" / "counts_per_pipeline.png",
     threads: 1
     conda:
         "envs/notebooks.yaml"
     log:
-        notebook = OUTDIR + "graphs" + "processed_count_stats.ipynb"
+        notebook = OUTDIR / "graphs" / "processed_count_stats.ipynb"
     notebook:
         "notebooks/count_stats.py.ipynb"
