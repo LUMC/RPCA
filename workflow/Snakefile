@@ -120,7 +120,7 @@ rule get_SJs_from_gtf:
         splicejns = OUTDIR / "TALON" / "cleaned_alignments" / "spliceJns.txt"
     threads: 1
     singularity:
-        "biocontainers/transcriptclean:v2.0.2_cv1"
+        "docker://biocontainers/transcriptclean:v2.0.2_cv1"
     shell:
         '''
         get_SJs_from_gtf \
@@ -143,7 +143,7 @@ rule transcriptclean:
         clean_sam = OUTDIR / "TALON" / "cleaned_alignments" / "{sample}" / "{sample}_clean.sam"
     threads: 10
     singularity:
-        "biocontainers/transcriptclean:v2.0.2_cv1"
+        "docker://biocontainers/transcriptclean:v2.0.2_cv1"
     shell:
         '''
         TranscriptClean \
@@ -168,7 +168,7 @@ rule talon_label_reads:
         labeled_sam = OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",
     threads: 10
     singularity:
-        "biocontainers/talon:v5.0_cv1"
+        "docker://biocontainers/talon:v5.0_cv1"
     shell:
         '''
         mkdir -p labeled
@@ -216,7 +216,7 @@ rule talon_initialize_annotate_database:
         database = OUTDIR / "TALON" / "talon.db"
     threads: 10
     singularity:
-        "biocontainers/talon:v5.0_cv1"
+        "docker://biocontainers/talon:v5.0_cv1"
     shell:
         '''
         
@@ -254,7 +254,7 @@ rule talon_filter_transcripts:
         filtered_transcripts = OUTDIR / "TALON" / "filtered_transcripts.csv"
     threads: 1
     singularity:
-        "biocontainers/talon:v5.0_cv1"
+        "docker://biocontainers/talon:v5.0_cv1"
     shell:
         '''
         talon_filter_transcripts \
@@ -281,7 +281,7 @@ rule talon_abundance:
     output:
         abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv'
     singularity:
-        "biocontainers/talon:v5.0_cv1"
+        "docker://biocontainers/talon:v5.0_cv1"
     shell:
         '''
         talon_abundance \
@@ -306,7 +306,7 @@ rule talon_create_GTF:
     output:
         GTF = OUTDIR / "TALON" / 'filtered_talon.gtf'
     singularity:
-        "biocontainers/talon:v5.0_cv1"
+        "docker://biocontainers/talon:v5.0_cv1"
     shell:
         '''
         talon_create_GTF \
