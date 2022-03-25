@@ -1,3 +1,8 @@
+"""
+Dogukan Bayraktar
+Python Version 3.9.7
+Compare exon positions of transcripts matched by GFFcompare
+"""
 from collections import defaultdict
 import pandas as pd
 import numpy as np
@@ -5,33 +10,33 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 
-def tracking():
+def tracking(gfftracking):
     """
-    Function to read data from the GFFcompare gffcmp.tracking file.
-    dictionary format: tcons_XXXX : [[transcript_id 1 ], [transcript_id 2 ], [transcript_id 3]]
-    :return:
+    Function to read data from the GFFcompare gffcmp.tracking file and
+    format as dictionary.
+    :return: dictionary format: tcons_XXXX : [[transcript_id 1 ],
+    [transcript_id 2 ], [transcript_id 3]]
     """
     tcons = {}
-    with open('/home/dogukan/Documents/afstuderen/notebook/selas/selas_new/selas_new_gffcmp.tracking') as file:
+    with open(gfftracking) as file:
         for line in file:
             line = line.split()
             transcripts = line[4::]
             temp_list = []
-            for transcript in transcripts:
-                if transcript == '-':
-                    temp_list.append('-')
-                else:
+            # only take lines with three transcripts
+            if '-' not in transcripts:
+                for transcript in transcripts:
                     temp_list.append(transcript.split('|')[1])
-            tcons[line[0]] = temp_list
+                tcons[line[0]] = temp_list
     return tcons
 
 
 def gtf(file):
     """
     Function to read transcript data from a GTF file.
-    dictonary output: transcript_id: [(exon_start, exon_end), (exon_start, exon_end), (exon_start, exon_end) etc...]
-    :param file:
-    :return:
+    :param file: GTF file
+    :return: dictonary output: transcript_id: [(exon_start, exon_end),
+    (exon_start, exon_end), (exon_start, exon_end) etc...]
     """
     gtf_dict = defaultdict(list)
     with open(file) as GTF:
@@ -49,17 +54,40 @@ def gtf(file):
 def merge(tcons, oxford, flair, talon):
     """
     Merges output from the two functions above.
-    dictonary output: tcons_XXXX : [[(exon_start, exon_end)], [(exon_start, exon_end)], [(exon_start, exon_end)]]
-    :param tcons:
-    :param oxford:
-    :param flair:
-    :param talon:
-    :return:
+    :param tcons: Dictonary with transcript id's as values
+    :param oxford: oxford exon positions per transcript
+    :param flair: flair exon positions per transcript
+    :param talon: talon exon positions per transcript
+    :return: dictonary output: tcons_XXXX : [[(exon_start, exon_end)],
+    [(exon_start, exon_end)], [(exon_start, exon_end)]]
     """
     tcons_exon = {}
     for key, value in tcons.items():
         tcons_exon[key] = [oxford[value[0]], flair[value[1]], talon[value[2]]]
     return tcons_exon
+
+
+def calculate_difference(transcript_exons):
+    """
+    Checks the differences between exon positions
+    :param transcript_exons:
+    :return: differences between pipeline exon positions
+    """
+    oxford_flair = []
+    oxford_talon = []
+    flair_talon = []
+    for key, value in transcript_exons.items():
+        value = np.array(value, dtype=object)
+        oxford = value[0]
+        flair = value[1]
+        talon = value[2]
+        a = np.subtract(oxford, flair)
+        b = np.subtract(oxford, talon)
+        c = np.subtract(flair, talon)
+        oxford_flair.append(a)
+        oxford_talon.append(b)
+        flair_talon.append(c)
+    return oxford_flair, oxford_talon, flair_talon
 
 
 def start_end(compare):
@@ -102,7 +130,21 @@ def writefile(start_dict, end_dict, outfile, header):
 
 
 def main():
-    pass
+    tcons = tracking('')
+    oxford = gtf('')
+    flair = gtf('')
+    talon = gtf('')
+
+    transcript_exons = merge(tcons, oxford, flair, talon)
+    oxford_flair, oxford_talon, flair_talon = calculate_difference(transcript_exons)
+
+    oxford_flair_start, oxford_flair_end = start_end(oxford_flair)
+    oxford_talon_start, oxford_talon_end = start_end(oxford_talon)
+    flair_talon_start, flair_talon_end = start_end(flair_talon)
+
+    writefile(oxford_flair_start, oxford_flair_end, 'oxford_flair.txt', 'oxford vs flair')
+    writefile(oxford_talon_start, oxford_talon_end, 'oxford_talon.txt', 'oxford vs talon')
+    writefile(flair_talon_start, flair_talon_end, 'flair_talon.txt', 'flair vs talon')
 
 
 main()
