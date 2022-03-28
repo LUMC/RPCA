@@ -132,7 +132,7 @@ def main():
     :return: -
     """
     flair_abundance = snakemake.input.flair_count
-    flair_gtf = snakemake.input.flair.flair_transcripts
+    flair_gtf = snakemake.input.flair_transcripts
     flair_dict = format_flair(flair_abundance)
     combine(flair_gtf, flair_dict, snakemake.output.flair_combined)
 
