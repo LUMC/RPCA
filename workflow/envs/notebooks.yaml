@@ -6,8 +6,8 @@ channels:
   - defaults
 dependencies:
   - blas=1.0
-  - ca-certificates=2020.10.14
-  - certifi=2020.6.20
+  - ca-certificates=2021.10.8
+  - certifi=2021.10.8
   - cycler=0.11.0
   - freetype=2.10.4
   - icu=67.1
@@ -44,6 +44,7 @@ dependencies:
   - setuptools=50.3.0
   - six=1.15.0
   - sqlite=3.33.0
+  - tabulate=0.8.9
   - tk=8.6.10
   - tornado=6.1
   - wheel=0.35.1

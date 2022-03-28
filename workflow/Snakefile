@@ -52,7 +52,17 @@ rule all:
         # total= OUTDIR / "graphs" / "total_count_per_sample.png",
         # per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
         # comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
-        tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
+        # tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
+        # this should really become one figure or report
+        oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
+        oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
+        oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
+        oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
+        flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
+        flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
+        oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
+        oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
+        flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
 
 
 rule minimap2_align:
@@ -762,3 +772,28 @@ rule count_stats:
         notebook = OUTDIR / "graphs" / "processed_count_stats.ipynb"
     notebook:
         "notebooks/count_stats.py.ipynb"
+
+rule exon_comparison:
+    """
+    Compare start and end positions of exons from matched transcripts.
+    Create boxplots and summary of differences.
+    """
+    input:
+        tracking = rules.gffcompare.output.tracking,
+        oxford = rules.combine.output.oxford_combined,
+        flair = rules.combine.output.flair_combined,
+        talon = rules.combine.output.talon_combined,
+    output:
+        oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
+        oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
+        oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
+        oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
+        flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
+        flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
+        oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
+        oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
+        flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
+    threads: 1
+    conda:
+        "envs/notebooks.yaml"
+    script: '''scripts/exon_comparison.py'''
