@@ -338,7 +338,7 @@ rule flair_bam_to_bed12:
         bam = rules.sam_to_bam.output.bam
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample,
-        scriptpath = SNAKEFILE.parent / "scripts" / "bam2Bed12.py"
+        scriptpath = SNAKEFILE.parent / "scripts" / "flair_scripts" / "bam2Bed12.py"
     output:
         bed12 = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
     threads: 1
