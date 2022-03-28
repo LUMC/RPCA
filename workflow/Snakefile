@@ -171,7 +171,7 @@ rule talon_label_reads:
         # sam_files = rules.minimap2_align.output.sam_files,
         genome = reference_genome
     params:
-        outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample,
     output:
         labeled_sam = OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",
     threads: 10
@@ -179,7 +179,6 @@ rule talon_label_reads:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
         '''
-        mkdir -p labeled
         talon_label_reads \
             --f {input.clean_sam}\
             --g {input.genome} \
