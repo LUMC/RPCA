@@ -1,63 +1,80 @@
-# Source data
+# Source directory
 sourcedir: "/exports/sascstudent/dbayraktar/snakemake_pipeline_development/RPCA"
 
-# FASTQ folder
+# Folder containing ONLY fastq files
 readsdir: "/exports/sascstudent/dbayraktar/Data/selas_data/filter_pipeline"
 
-# results are stored here
+# Results are stored here
 results: "results"
 
-# run name
+# Run name
 run_name: "oxford_avglen"
 
-# Input genome
+# Reference Genome
 genome_fasta: "/exports/sascstudent/dbayraktar/Data/selas_data/WT_AdV-lumc007_WGS-headeredit.fa"
 
+# Annotation GTF
 existing_annotation: "/exports/sascstudent/dbayraktar/Data/selas_data/AdV-lumc007_LUMC.gtf"
 
-# minimap2 parameters
+# Minimap2 mapping parameters
 minimap2_opts: "-uf -k14"
 
-minimap_index_opts: " -k14 "
-
 # TALON parameters
+
+# Minimum number of counts a transcript must have to pass the filter
 talon_mincounts: "1"
 
+# Minimum number of samples the transcript must be detected in
 talon_mindatasets: "1"
 
+# Number of bases, allowed flexibility for annotating known transcripts on the 5 end
 talon_5p: 500
 
+# Number of bases, allowed flexibility for annotating known transcripts on the 3 end
 talon_3p: 300
 
 # FLAIR parameters
 
+# Number of bases, range of bases from a known splice site for correction
 flair_correct_window: 10
 
+# Number of bases for the collapse window
 flair_collapse_window: 100
 
+# Minimum mapping quality of reads
 flair_collapse_quality: 1
 
+# Minimum number of supporting reads for filtering collapsed transcripts
 flair_collapse_support: 3
 
+# Maximum number of TSS/TES picked per isoform
 flair_collapse_max_ends: 2
 
+# Optional setting for the collapse step can be passed here
 flair_collapse_optional: " "
 
+# Minimum mapping quality of reads
 flair_abundance_quality: 1
 
 # OXFORD parameters
 
+# Internal priming check
 oxford_poly_context: 24
 
+# Internal priming check
 oxford_max_poly_run: 8
 
+# Minimum mapping quality for reads
 oxford_minimum_mapping_quality: 40
 
+# Stringtie options
 oxford_stringtie_opts: " -c 1 -f 0.01 "
 
+# Stringtie merge options
 oxford_merge_opts: " -m 50 -c 0 -f 0.01 "
 
+# PrepDE options
 oxford_count_opts: " -L -p 10 "
 
-# threads
+# Number of threads
 threads: 10
