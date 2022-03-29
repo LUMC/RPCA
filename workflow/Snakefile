@@ -40,7 +40,7 @@ rule all:
         # flair
         # flair_abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
         # oxford
-        # ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
         # ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         # analyses
         # all = OUTDIR / "graphs" / "all_overlap_diagram.png",
@@ -54,15 +54,15 @@ rule all:
         # comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
         # tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
         # this should really become one figure or report
-        oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
-        oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
-        oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
-        oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
-        flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
-        flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
-        oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
-        oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
-        flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
+        # oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
+        # oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
+        # oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
+        # oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
+        # flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
+        # flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
+        # oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
+        # oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
+        # flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
 
 
 rule minimap2_align:
@@ -500,6 +500,7 @@ rule samtool_stats:
             {input.bam} | grep ^SN | cut -f 2- > {output.stats}
         '''
 
+
 ##################
 #      OXFORD    #
 ##################
@@ -619,9 +620,7 @@ rule oxford_calc_abundance:
     """
     input:
         config_file = rules.oxford_config.output.config,
-        # stats = rules.samtool_stats.output.stats
-    params:
-        avg_len = config["oxford_avg_len"],
+        stats = expand(OUTDIR / "statistics" / "{sample}.stats", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
     output:
         transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
         genes = OUTDIR / "OXFORD" / "abundance" / "gene_count_matrix.csv",
@@ -630,9 +629,18 @@ rule oxford_calc_abundance:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     shell:
         '''
+        declare -i calc=0;
+        for line in {input.stats}
+        do
+           numb=$(awk 'NR==26 {{print $3}}' < ${{line}});
+           calc+=$((${{numb}}));
+        done;
+        words=$(echo {input.stats} | wc -w);
+        avg_len=$((${{calc}} / ${{words}}));
+
         prepDE.py \
             -i {input.config_file} \
-            -l {params.avg_len} \
+            -l ${{avg_len}} \
             -g {output.genes} \
             -t {output.transcripts}
         '''

@@ -2,13 +2,13 @@
 sourcedir: "/exports/sascstudent/dbayraktar/snakemake_pipeline_development/RPCA"
 
 # FASTQ folder
-readsdir: "/exports/sascstudent/dbayraktar/Data/selas_data/filter"
+readsdir: "/exports/sascstudent/dbayraktar/Data/selas_data/filter_pipeline"
 
 # results are stored here
 results: "results"
 
 # run name
-run_name: "oxford_test"
+run_name: "oxford_avglen"
 
 # Input genome
 genome_fasta: "/exports/sascstudent/dbayraktar/Data/selas_data/WT_AdV-lumc007_WGS-headeredit.fa"
@@ -58,8 +58,6 @@ oxford_stringtie_opts: " -c 1 -f 0.01 "
 oxford_merge_opts: " -m 50 -c 0 -f 0.01 "
 
 oxford_count_opts: " -L -p 10 "
-
-oxford_avg_len: 1400
 
 # threads
 threads: 10
