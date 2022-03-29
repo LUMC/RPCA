@@ -1,6 +1,6 @@
 # RNA-seq Pipeline Comparison and Analyses
 
-A Snakemake workflow for running TALON, FLAIR, and pipeline-nanopore-ref-isoforms. Performs a comparative analyses of results using tools such as GFFcompare using GFFcompare.
+A Snakemake workflow for running TALON, FLAIR, and pipeline-nanopore-ref-isoforms. Performs a comparative analyses of results using tools such as GFFcompare.
 
 # <a name="Flowchart"><a/>Flowchart
 
@@ -8,7 +8,7 @@ A Snakemake workflow for running TALON, FLAIR, and pipeline-nanopore-ref-isoform
 
 # <a name="Dependencies"><a/>Dependencies
 
-1. Snakemake 7.3.1
+1. Snakemake 7.3.1 <br>
 [A full snakemake instalation is recommended](https://snakemake.readthedocs.io/en/stable/getting_started/installation.html#full-installation)
 2. Singularity 3.7.0
 
