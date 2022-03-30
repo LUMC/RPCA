@@ -11,8 +11,8 @@ dependencies:
   - backcall=0.2.0
   - blas=1.0
   - bleach=3.2.1
-  - ca-certificates=2020.10.14
-  - certifi=2020.6.20
+  - ca-certificates=2021.10.8
+  - certifi=2021.10.8
   - cffi=1.14.3
   - cycler=0.11.0
   - dbus=1.13.18
@@ -112,6 +112,7 @@ dependencies:
   - tk=8.6.10
   - tornado=6.1
   - traitlets=5.0.5
+  - upsetplot=0.6.0
   - wcwidth=0.2.5
   - webencodings=0.5.1
   - wheel=0.35.1
@@ -120,3 +121,4 @@ dependencies:
   - zeromq=4.3.3
   - zipp=3.3.1
   - zlib=1.2.11
+

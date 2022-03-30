@@ -43,15 +43,18 @@ rule all:
         # ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
         # ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         # analyses
-        # all = OUTDIR / "graphs" / "all_overlap_diagram.png",
-        # known = OUTDIR / "graphs" / "known_overlap_diagram.png",
-        # novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        all = OUTDIR / "graphs" / "all_overlap_diagram.png",
+        known = OUTDIR / "graphs" / "known_overlap_diagram.png",
+        novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        all_upset= OUTDIR / "graphs" / "all_upset.png",
+        known_upset= OUTDIR / "graphs" / "known_overlap_upset.png",
+        novel_upset= OUTDIR / "graphs" / "novel_overlap_upset.png",
         # align= OUTDIR / "graphs" / "read_alignments.png",
         # mismatch= OUTDIR / "graphs" / "read_mismatches.png",
         # readlen= OUTDIR / "graphs" / "read_lengths.png",
-        total= OUTDIR / "graphs" / "total_count_per_sample.png",
-        per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
-        comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
+        # total= OUTDIR / "graphs" / "total_count_per_sample.png",
+        # per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
+        # comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
         # tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
         # this should really become one figure or report
         # oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
@@ -732,6 +735,9 @@ rule venn_diagrams:
         all = OUTDIR / "graphs" / "all_overlap_diagram.png",
         known = OUTDIR / "graphs" / "known_overlap_diagram.png",
         novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        all_upset = OUTDIR / "graphs" / "all_upset.png",
+        known_upset = OUTDIR / "graphs" / "known_overlap_upset.png",
+        novel_upset = OUTDIR / "graphs" / "novel_overlap_upset.png",
     threads: 1
     conda:
         "envs/notebooks.yaml"
