@@ -40,7 +40,7 @@ rule all:
         # flair
         # flair_abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
         # oxford
-        ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
+        # ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
         # ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         # analyses
         # all = OUTDIR / "graphs" / "all_overlap_diagram.png",
@@ -49,9 +49,9 @@ rule all:
         # align= OUTDIR / "graphs" / "read_alignments.png",
         # mismatch= OUTDIR / "graphs" / "read_mismatches.png",
         # readlen= OUTDIR / "graphs" / "read_lengths.png",
-        # total= OUTDIR / "graphs" / "total_count_per_sample.png",
-        # per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
-        # comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
+        total= OUTDIR / "graphs" / "total_count_per_sample.png",
+        per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
+        comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
         # tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
         # this should really become one figure or report
         # oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
@@ -745,8 +745,9 @@ rule alignment_stats:
     Create graphs showing alignment statistics.
     """
     input:
-        # stats = rules.samtool_stats.output.stats
         stats = expand(OUTDIR / "statistics" / "{sample}.stats" , sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+    params:
+        datasetnames = [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
         align = OUTDIR / "graphs" / "read_alignments.png",
         mismatch = OUTDIR / "graphs" / "read_mismatches.png",
@@ -768,6 +769,8 @@ rule count_stats:
         flair_count = rules.flair_quantify.output.abundance,
         talon_count = rules.talon_abundance.output.abundance,
         oxford_count = rules.oxford_calc_abundance.output.transcripts,
+    params:
+        datasetnames = [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
         total = OUTDIR / "graphs" / "total_count_per_sample.png",
         per_feature = OUTDIR / "graphs" / "counts_per_feature.png",
