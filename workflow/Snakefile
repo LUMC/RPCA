@@ -187,6 +187,7 @@ rule talon_label_reads:
             --g {input.genome} \
             --t {threads} \
             --ar 20 \
+            --deleteTmp \
             --o {params.outdir}
         '''
 
