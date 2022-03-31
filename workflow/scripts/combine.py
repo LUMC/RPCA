@@ -109,7 +109,7 @@ def combine(gtf_file, counts, output):
                     try:
                         # This is for the flair '_' delimiter issue
                         gene_id = line.split()[9][1:-2]
-                        new_transcript_id = transcript_id + '_' + gene_id
+                        new_transcript_id = f'{transcript_id}_{gene_id}'
                         count = counts[new_transcript_id]
                     except KeyError as err:
                         # transcript is actually missing
@@ -118,7 +118,7 @@ def combine(gtf_file, counts, output):
                         count = 0
                 # Add transcript count to end of line and write to file
                 # counts are not in TPM, hijacking the column for use with GFFcompare
-                outfile.write(line[:-1] + ' ' + 'TPM' + ' ' + '"' + str(count) + '"' + ';' + '\n')
+                outfile.write(f'{line[:-1]} TPM "{str(count)}";\n')
             else:
                 # Line is not a transcript
                 outfile.write(line)

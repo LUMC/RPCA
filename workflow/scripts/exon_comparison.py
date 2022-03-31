@@ -143,66 +143,73 @@ def writefile(start_dict, end_dict, outfile, header):
 def plot_boxplots(oxford_flair_start, oxford_flair_end,
                   oxford_talon_start, oxford_talon_end
                   , flair_talon_start, flair_talon_end):
+    """
+    Plot data as boxplots.
+    """
+    plt.rcParams["figure.figsize"] = [10, 10]
+    plt.rcParams["figure.autolayout"] = True
+    plt.rcParams.update({'font.size': 15})
+
     labels, data = [*zip(*oxford_flair_start.items())]
-    plt.figure(figsize=(20, 10))
+    plt.figure()
     plt.boxplot(data)
     plt.yscale('log')
     plt.ylabel('Number of bases')
     plt.xlabel('Exon number')
     plt.title('Exon starting position differences between flair and oxford for all transcripts')
-    plt.show()
+    plt.savefig(snakemake.output.oxford_flair_start, dpi=200)
 
     labels, data = [*zip(*oxford_flair_end.items())]
-    plt.figure(figsize=(20, 10))
+    plt.figure()
     plt.boxplot(data)
     plt.yscale('log')
     plt.ylabel('Number of bases')
     plt.xlabel('Exon number')
     plt.title('Exon ending position differences between flair and oxford for all transcripts')
-    plt.show()
+    plt.savefig(snakemake.output.oxford_flair_end, dpi=200)
 
     labels, data = [*zip(*oxford_talon_start.items())]
-    plt.figure(figsize=(20, 10))
+    plt.figure()
     plt.boxplot(data)
     plt.yscale('log')
     plt.ylabel('Number of bases')
     plt.xlabel('Exon number')
     plt.title('Exon starting position differences between oxford and talon for all transcripts')
-    plt.show()
+    plt.savefig(snakemake.output.oxford_talon_start, dpi=200)
 
     labels, data = [*zip(*oxford_talon_end.items())]
-    plt.figure(figsize=(20, 10))
+    plt.figure()
     plt.boxplot(data)
     plt.yscale('log')
     plt.ylabel('Number of bases')
     plt.xlabel('Exon number')
     plt.title('Exon ending position differences between oxford and talon for all transcripts')
-    plt.show()
+    plt.savefig(snakemake.output.oxford_talon_end, dpi=200)
 
     labels, data = [*zip(*flair_talon_start.items())]
-    plt.figure(figsize=(20, 10))
+    plt.figure()
     plt.boxplot(data)
     plt.yscale('log')
     plt.ylabel('Number of bases')
     plt.xlabel('Exon number')
     plt.title('Exon starting position differences between flair and talon for all transcripts')
-    plt.show()
+    plt.savefig(snakemake.output.flair_talon_start, dpi=200)
 
     labels, data = [*zip(*flair_talon_end.items())]
-    plt.figure(figsize=(20, 10))
+    plt.figure()
     plt.boxplot(data)
     plt.yscale('log')
     plt.ylabel('Number of bases')
     plt.xlabel('Exon number')
     plt.title('Exon ending position differences between flair and talon for all transcripts')
-    plt.show()
+    plt.savefig(snakemake.output.flair_talon_end, dpi=200)
 
 
 def main():
-    tcons = tracking('/home/dogukan/Downloads/exoncompare_test/gffcmp.tracking')
-    oxford = gtf('/home/dogukan/Downloads/exoncompare_test/oxford_counts.gtf')
-    flair = gtf('/home/dogukan/Downloads/exoncompare_test/flair_counts.gtf')
-    talon = gtf('/home/dogukan/Downloads/exoncompare_test/talon_counts.gtf')
+    tcons = tracking(snakemake.input.tracking)
+    oxford = gtf(snakemake.input.oxford)
+    flair = gtf(snakemake.input.flair)
+    talon = gtf(snakemake.input.talon)
 
     transcript_exons = merge(tcons, oxford, flair, talon)
     oxford_flair, oxford_talon, flair_talon = calculate_difference(transcript_exons)
@@ -215,9 +222,9 @@ def main():
                   oxford_talon_start, oxford_talon_end,
                   flair_talon_start, flair_talon_end)
 
-    writefile(oxford_flair_start, oxford_flair_end, '/home/dogukan/Downloads/exoncompare_test/oxford_flair.txt', 'oxford vs flair')
-    writefile(oxford_talon_start, oxford_talon_end, '/home/dogukan/Downloads/exoncompare_test/oxford_talon.txt', 'oxford vs talon')
-    writefile(flair_talon_start, flair_talon_end, '/home/dogukan/Downloads/exoncompare_test/flair_talon.txt', 'flair vs talon')
+    writefile(oxford_flair_start, oxford_flair_end, snakemake.output.oxford_flair_summ, 'oxford vs flair')
+    writefile(oxford_talon_start, oxford_talon_end, snakemake.output.oxford_talon_summ, 'oxford vs talon')
+    writefile(flair_talon_start, flair_talon_end, snakemake.output.flair_talon_summ, 'flair vs talon')
 
 
 main()

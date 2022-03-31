@@ -43,16 +43,29 @@ rule all:
         # ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
         # ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         # analyses
-        # all = OUTDIR / "graphs" / "all_overlap_diagram.png",
-        # known = OUTDIR / "graphs" / "known_overlap_diagram.png",
-        # novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        all = OUTDIR / "graphs" / "all_overlap_diagram.png",
+        known = OUTDIR / "graphs" / "known_overlap_diagram.png",
+        novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        all_upset= OUTDIR / "graphs" / "all_upset.png",
+        known_upset= OUTDIR / "graphs" / "known_overlap_upset.png",
+        novel_upset= OUTDIR / "graphs" / "novel_overlap_upset.png",
         # align= OUTDIR / "graphs" / "read_alignments.png",
         # mismatch= OUTDIR / "graphs" / "read_mismatches.png",
         # readlen= OUTDIR / "graphs" / "read_lengths.png",
         # total= OUTDIR / "graphs" / "total_count_per_sample.png",
         # per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
         # comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
-        tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
+        # tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
+        # this should really become one figure or report
+        # oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
+        # oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
+        # oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
+        # oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
+        # flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
+        # flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
+        # oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
+        # oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
+        # flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
 
 
 rule minimap2_align:
@@ -161,7 +174,7 @@ rule talon_label_reads:
         # sam_files = rules.minimap2_align.output.sam_files,
         genome = reference_genome
     params:
-        outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample
+        outdir = lambda wildcards: OUTDIR / "TALON" / "labeled" / wildcards.sample,
     output:
         labeled_sam = OUTDIR / "TALON" / "labeled" / "{sample}_labeled.sam",
     threads: 10
@@ -169,12 +182,12 @@ rule talon_label_reads:
         "docker://biocontainers/talon:v5.0_cv1"
     shell:
         '''
-        mkdir -p labeled
         talon_label_reads \
             --f {input.clean_sam}\
             --g {input.genome} \
             --t {threads} \
             --ar 20 \
+            --deleteTmp \
             --o {params.outdir}
         '''
 
@@ -328,7 +341,7 @@ rule flair_bam_to_bed12:
         bam = rules.sam_to_bam.output.bam
     params:
         outdir = lambda wildcards: OUTDIR / "FLAIR" / "bed12" / wildcards.sample,
-        scriptpath = SNAKEFILE.parent / "scripts" / "bam2Bed12.py"
+        scriptpath = SNAKEFILE.parent / "scripts" / "flair_scripts" / "bam2Bed12.py"
     output:
         bed12 = OUTDIR / "FLAIR" / "bed12" / "{sample}.bed"
     threads: 1
@@ -491,6 +504,7 @@ rule samtool_stats:
             {input.bam} | grep ^SN | cut -f 2- > {output.stats}
         '''
 
+
 ##################
 #      OXFORD    #
 ##################
@@ -610,9 +624,7 @@ rule oxford_calc_abundance:
     """
     input:
         config_file = rules.oxford_config.output.config,
-        # stats = rules.samtool_stats.output.stats
-    params:
-        avg_len = config["oxford_avg_len"],
+        stats = expand(OUTDIR / "statistics" / "{sample}.stats", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
     output:
         transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
         genes = OUTDIR / "OXFORD" / "abundance" / "gene_count_matrix.csv",
@@ -621,9 +633,18 @@ rule oxford_calc_abundance:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     shell:
         '''
+        declare -i calc=0;
+        for line in {input.stats}
+        do
+           numb=$(awk 'NR==26 {{print $3}}' < ${{line}});
+           calc+=$((${{numb}}));
+        done;
+        words=$(echo {input.stats} | wc -w);
+        avg_len=$((${{calc}} / ${{words}}));
+
         prepDE.py \
             -i {input.config_file} \
-            -l {params.avg_len} \
+            -l ${{avg_len}} \
             -g {output.genes} \
             -t {output.transcripts}
         '''
@@ -715,6 +736,9 @@ rule venn_diagrams:
         all = OUTDIR / "graphs" / "all_overlap_diagram.png",
         known = OUTDIR / "graphs" / "known_overlap_diagram.png",
         novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        all_upset = OUTDIR / "graphs" / "all_upset.png",
+        known_upset = OUTDIR / "graphs" / "known_overlap_upset.png",
+        novel_upset = OUTDIR / "graphs" / "novel_overlap_upset.png",
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -728,8 +752,9 @@ rule alignment_stats:
     Create graphs showing alignment statistics.
     """
     input:
-        # stats = rules.samtool_stats.output.stats
         stats = expand(OUTDIR / "statistics" / "{sample}.stats" , sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+    params:
+        datasetnames = [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
         align = OUTDIR / "graphs" / "read_alignments.png",
         mismatch = OUTDIR / "graphs" / "read_mismatches.png",
@@ -751,6 +776,8 @@ rule count_stats:
         flair_count = rules.flair_quantify.output.abundance,
         talon_count = rules.talon_abundance.output.abundance,
         oxford_count = rules.oxford_calc_abundance.output.transcripts,
+    params:
+        datasetnames = [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
         total = OUTDIR / "graphs" / "total_count_per_sample.png",
         per_feature = OUTDIR / "graphs" / "counts_per_feature.png",
@@ -762,3 +789,28 @@ rule count_stats:
         notebook = OUTDIR / "graphs" / "processed_count_stats.ipynb"
     notebook:
         "notebooks/count_stats.py.ipynb"
+
+rule exon_comparison:
+    """
+    Compare start and end positions of exons from matched transcripts.
+    Create boxplots and summary of differences.
+    """
+    input:
+        tracking = rules.gffcompare.output.tracking,
+        oxford = rules.combine.output.oxford_combined,
+        flair = rules.combine.output.flair_combined,
+        talon = rules.combine.output.talon_combined,
+    output:
+        oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
+        oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
+        oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
+        oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
+        flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
+        flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
+        oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
+        oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
+        flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
+    threads: 1
+    conda:
+        "envs/notebooks.yaml"
+    script: '''scripts/exon_comparison.py'''
