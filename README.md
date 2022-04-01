@@ -19,10 +19,15 @@ Clone the repository to desired location.
 # <a name="How to run"><a/>How to run
 
 1. Set parameters in ```config.yaml```
-2. run: ```snakemake -p --use-singularity --singularity-prefix "resources"  --singularity-args "--bind *" --use-conda -j ** all```
+2. run: ```snakemake -p --use-singularity --singularity-prefix "resources"  --singularity-args "--bind *" --use-conda -j ** all --configfile "config/config.yaml"```
 
 Note * : You should provide your own directory for the --bind command so that the data is accesible from the singularity containers. <br>
 Note ** : Specify number of available threads here.
+
+# <a name="Snakemake report"><a/>Snakemake report
+
+You can run ```snakemake --report report.html``` AFTER the workflow finished to create a report containing results.
+
 
 # <a name="Troubleshooting"><a/>Troubleshooting
 
