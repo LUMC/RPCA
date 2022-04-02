@@ -64,6 +64,8 @@ rule all:
         oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
         oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
         flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
+        classes = OUTDIR / "graphs" / "all_gffcompare_classes.png",
+        threeclasses = OUTDIR / "graphs" / "all_gffcompare_threeclasses.png",
 
 
 rule minimap2_align:
@@ -738,6 +740,8 @@ rule venn_diagrams:
         all_upset = report(OUTDIR / "graphs" / "all_upset.png", caption="report/transcript_overlap/all_upset.rst", category="Transcript overlap"),
         known_upset = report(OUTDIR / "graphs" / "known_overlap_upset.png", caption="report/transcript_overlap/known_upset.rst", category="Transcript overlap"),
         novel_upset = report(OUTDIR / "graphs" / "novel_overlap_upset.png", caption="report/transcript_overlap/novel_upset.rst", category="Transcript overlap"),
+        classes = report(OUTDIR / "graphs" / "all_gffcompare_classes.png", caption="report/transcript_overlap/classes.rst", category="Transcript overlap"),
+        threeclasses= report(OUTDIR / "graphs" / "all_gffcompare_threeclasses.png",caption="report/transcript_overlap/classes.rst",category="Transcript overlap"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
