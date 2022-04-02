@@ -8,7 +8,7 @@ RNA-seq pipelines TALON, FLAIR, and OXFORD
 from pathlib import Path
 
 # All parameters must be set by the user in the configuration file
-configfile: "config/config.yaml"
+
 # Working directory
 workdir: Path.joinpath(Path(config["run_name"]))
 # Location of snakefile relative to workdir
@@ -31,6 +31,7 @@ READS = [filepath for filepath in Path(READSDIR).glob('**/*')]
 if len(READS) != len(set(READS)):
     raise RuntimeError("\n*** Samplenames are NOT unique. Cannot continue! exiting. ***\n")
 
+report: "report/workflow.rst"
 
 rule all:
     input:
@@ -41,31 +42,30 @@ rule all:
         # flair_abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
         # oxford
         # ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
-        # ox_bam_filtered = expand(OUTDIR / "OXFORD" / "filtered" / "{sample}.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         # analyses
-        all = OUTDIR / "graphs" / "all_overlap_diagram.png",
-        known = OUTDIR / "graphs" / "known_overlap_diagram.png",
-        novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
+        all_diagram = OUTDIR / "graphs" / "all_overlap_diagram.png",
+        known_diagram = OUTDIR / "graphs" / "known_overlap_diagram.png",
+        novel_diagram = OUTDIR / "graphs" / "novel_overlap_diagram.png",
         all_upset= OUTDIR / "graphs" / "all_upset.png",
         known_upset= OUTDIR / "graphs" / "known_overlap_upset.png",
         novel_upset= OUTDIR / "graphs" / "novel_overlap_upset.png",
-        # align= OUTDIR / "graphs" / "read_alignments.png",
-        # mismatch= OUTDIR / "graphs" / "read_mismatches.png",
-        # readlen= OUTDIR / "graphs" / "read_lengths.png",
-        # total= OUTDIR / "graphs" / "total_count_per_sample.png",
-        # per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
-        # comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
-        # tracking = OUTDIR / "gffcompare" / "gffcmp.tracking"
-        # this should really become one figure or report
-        # oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
-        # oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
-        # oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
-        # oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
-        # flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
-        # flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
-        # oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
-        # oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
-        # flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
+        align= OUTDIR / "graphs" / "read_alignments.png",
+        mismatch= OUTDIR / "graphs" / "read_mismatches.png",
+        readlen= OUTDIR / "graphs" / "read_lengths.png",
+        total= OUTDIR / "graphs" / "total_count_per_sample.png",
+        per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
+        comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
+        oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
+        oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
+        oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
+        oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
+        flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
+        flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
+        oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
+        oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
+        flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
+        classes = OUTDIR / "graphs" / "all_gffcompare_classes.png",
+        threeclasses = OUTDIR / "graphs" / "all_gffcompare_threeclasses.png",
 
 
 rule minimap2_align:
@@ -327,6 +327,7 @@ rule talon_create_GTF:
             --build {params.genome_name} \
             --o {params.outdir}
         '''
+
 
 ##################
 #      FLAIR     #
@@ -733,12 +734,14 @@ rule venn_diagrams:
     input:
         tracking = rules.gffcompare.output.tracking
     output:
-        all = OUTDIR / "graphs" / "all_overlap_diagram.png",
-        known = OUTDIR / "graphs" / "known_overlap_diagram.png",
-        novel = OUTDIR / "graphs" / "novel_overlap_diagram.png",
-        all_upset = OUTDIR / "graphs" / "all_upset.png",
-        known_upset = OUTDIR / "graphs" / "known_overlap_upset.png",
-        novel_upset = OUTDIR / "graphs" / "novel_overlap_upset.png",
+        all_diagram = report(OUTDIR / "graphs" / "all_overlap_diagram.png", caption="report/transcript_overlap/all_diagram.rst", category="Transcript overlap"),
+        known_diagram = report(OUTDIR / "graphs" / "known_overlap_diagram.png", caption="report/transcript_overlap/known_diagram.rst", category="Transcript overlap"),
+        novel_diagram = report(OUTDIR / "graphs" / "novel_overlap_diagram.png", caption="report/transcript_overlap/novel_diagram.rst", category="Transcript overlap"),
+        all_upset = report(OUTDIR / "graphs" / "all_upset.png", caption="report/transcript_overlap/all_upset.rst", category="Transcript overlap"),
+        known_upset = report(OUTDIR / "graphs" / "known_overlap_upset.png", caption="report/transcript_overlap/known_upset.rst", category="Transcript overlap"),
+        novel_upset = report(OUTDIR / "graphs" / "novel_overlap_upset.png", caption="report/transcript_overlap/novel_upset.rst", category="Transcript overlap"),
+        classes = report(OUTDIR / "graphs" / "all_gffcompare_classes.png", caption="report/transcript_overlap/classes.rst", category="Transcript overlap"),
+        threeclasses= report(OUTDIR / "graphs" / "all_gffcompare_threeclasses.png",caption="report/transcript_overlap/classes.rst",category="Transcript overlap"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -756,9 +759,9 @@ rule alignment_stats:
     params:
         datasetnames = [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
-        align = OUTDIR / "graphs" / "read_alignments.png",
-        mismatch = OUTDIR / "graphs" / "read_mismatches.png",
-        readlen = OUTDIR / "graphs" / "read_lengths.png",
+        align = report(OUTDIR / "graphs" / "read_alignments.png", caption="report/alignment/align.rst", category="Alignment"),
+        mismatch = report(OUTDIR / "graphs" / "read_mismatches.png", caption="report/alignment/mismatch.rst", category="Alignment"),
+        readlen = report(OUTDIR / "graphs" / "read_lengths.png", caption="report/alignment/readlen.rst", category="Alignment"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -779,9 +782,9 @@ rule count_stats:
     params:
         datasetnames = [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
-        total = OUTDIR / "graphs" / "total_count_per_sample.png",
-        per_feature = OUTDIR / "graphs" / "counts_per_feature.png",
-        comp = OUTDIR / "graphs" / "counts_per_pipeline.png",
+        total = report(OUTDIR / "graphs" / "total_count_per_sample.png", caption="report/abundance/total.rst", category="Abundance"),
+        per_feature = report(OUTDIR / "graphs" / "counts_per_feature.png", caption="report/abundance/per_feature.rst", category="Abundance"),
+        comp = report(OUTDIR / "graphs" / "counts_per_pipeline.png", caption="report/abundance/comp.rst", category="Abundance"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -801,15 +804,15 @@ rule exon_comparison:
         flair = rules.combine.output.flair_combined,
         talon = rules.combine.output.talon_combined,
     output:
-        oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
-        oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
-        oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
-        oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
-        flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
-        flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
-        oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
-        oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
-        flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
+        oxford_flair_start = report(OUTDIR / "exon_comparison" / "oxford_flair_start.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        oxford_flair_end = report(OUTDIR / "exon_comparison" / "oxford_flair_end.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        oxford_talon_start = report(OUTDIR / "exon_comparison" / "oxford_talon_start.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        oxford_talon_end = report(OUTDIR / "exon_comparison" / "oxford_talon_end.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        flair_talon_start = report(OUTDIR / "exon_comparison" / "flair_talon_start.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        flair_talon_end = report(OUTDIR / "exon_comparison" / "flair_talon_end.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        oxford_flair_summ = report(OUTDIR / "exon_comparison" / "oxford_flair_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),
+        oxford_talon_summ = report(OUTDIR / "exon_comparison" / "oxford_talon_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),
+        flair_talon_summ = report(OUTDIR / "exon_comparison" / "flair_talon_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
