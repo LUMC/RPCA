@@ -654,6 +654,30 @@ rule oxford_calc_abundance:
 #    analyses    #
 ##################
 
+rule sqanti3:
+    input:
+        gtf = expand("{gtffile}", gtffile=[rules.oxford_merge_stringtie.output.merged_gff, rules.flair_collapse.output.gtf, rules.talon_create_GTF.output.GTF]),
+        annotation = existing_annotation,
+        genome = reference_genome,
+    params:
+        outdir = lambda wildcards: OUTDIR / "sqanti3" / wildcards.sample
+    output:
+        classification = outdir / "sqanti3" / "{gtffile}"
+    threads: 10
+    singularity:
+        ""
+    shell:
+        '''
+        sqanti3_qc.py \
+            {input.gtf} \
+            {input.annotation} \
+            {input.genome} \
+            --force_id_ignore \
+            --output {params.outdir} \
+            --cpus {threads} \
+            --report both
+        '''
+
 rule subread_featurecounts:
     """
     Calculate counts from the annotation file with Subread.
