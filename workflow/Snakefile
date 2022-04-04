@@ -35,37 +35,37 @@ report: "report/workflow.rst"
 
 rule all:
     input:
-        # talon
+        # TALON
         # talon_abundance = OUTDIR / "TALON" / 'filtered_talon_abundance_filtered.tsv',
         # talon_GTF = OUTDIR / "TALON" / 'filtered_talon.gtf',
-        # flair
+        #
+        # FLAIR
         # flair_abundance = OUTDIR / "FLAIR" / "quantify" / "flair_counts_matrix.tsv",
-        # oxford
+        #
+        # OXFORD
         # ox_transcripts = OUTDIR / "OXFORD" / "abundance" / "transcript_count_matrix.csv",
-        # analyses
+        #
+        # ANALYSES
         all_diagram = OUTDIR / "graphs" / "all_overlap_diagram.png",
         known_diagram = OUTDIR / "graphs" / "known_overlap_diagram.png",
         novel_diagram = OUTDIR / "graphs" / "novel_overlap_diagram.png",
         all_upset= OUTDIR / "graphs" / "all_upset.png",
         known_upset= OUTDIR / "graphs" / "known_overlap_upset.png",
         novel_upset= OUTDIR / "graphs" / "novel_overlap_upset.png",
-        align= OUTDIR / "graphs" / "read_alignments.png",
-        mismatch= OUTDIR / "graphs" / "read_mismatches.png",
-        readlen= OUTDIR / "graphs" / "read_lengths.png",
-        total= OUTDIR / "graphs" / "total_count_per_sample.png",
-        per_feature= OUTDIR / "graphs" / "counts_per_feature.png",
-        comp= OUTDIR / "graphs" / "counts_per_pipeline.png",
-        oxford_flair_start = OUTDIR / "exon_comparison" / "oxford_flair_start.png",
-        oxford_flair_end = OUTDIR / "exon_comparison" / "oxford_flair_end.png",
-        oxford_talon_start = OUTDIR / "exon_comparison" / "oxford_talon_start.png",
-        oxford_talon_end = OUTDIR / "exon_comparison" / "oxford_talon_end.png",
-        flair_talon_start = OUTDIR / "exon_comparison" / "flair_talon_start.png",
-        flair_talon_end = OUTDIR / "exon_comparison" / "flair_talon_end.png",
+        classes = OUTDIR / "graphs" / "all_gffcompare_classes.png",
+        threeclasses = OUTDIR / "graphs" / "all_gffcompare_threeclasses.png",
+        align = OUTDIR / "graphs" / "read_alignments.png",
+        mismatch = OUTDIR / "graphs" / "read_mismatches.png",
+        readlen = OUTDIR / "graphs" / "read_lengths.png",
+        total = OUTDIR / "graphs" / "total_count_per_sample.png",
+        per_feature = OUTDIR / "graphs" / "counts_per_feature.png",
+        comp = OUTDIR / "graphs" / "counts_per_pipeline.png",
+        oxford_flair = OUTDIR / "exon_comparison" / "oxford_flair.png",
+        oxford_talon = OUTDIR / "exon_comparison" / "oxford_talon.png",
+        flair_talon = OUTDIR / "exon_comparison" / "flair_talon.png",
         oxford_flair_summ = OUTDIR / "exon_comparison" / "oxford_flair_summ.txt",
         oxford_talon_summ = OUTDIR / "exon_comparison" / "oxford_talon_summ.txt",
         flair_talon_summ = OUTDIR / "exon_comparison" / "flair_talon_summ.txt",
-        classes = OUTDIR / "graphs" / "all_gffcompare_classes.png",
-        threeclasses = OUTDIR / "graphs" / "all_gffcompare_threeclasses.png",
 
 
 rule minimap2_align:
@@ -654,29 +654,29 @@ rule oxford_calc_abundance:
 #    analyses    #
 ##################
 
-rule sqanti3:
-    input:
-        gtf = expand("{gtffile}", gtffile=[rules.oxford_merge_stringtie.output.merged_gff, rules.flair_collapse.output.gtf, rules.talon_create_GTF.output.GTF]),
-        annotation = existing_annotation,
-        genome = reference_genome,
-    params:
-        outdir = lambda wildcards: OUTDIR / "sqanti3" / wildcards.sample
-    output:
-        classification = outdir / "sqanti3" / "{gtffile}"
-    threads: 10
-    singularity:
-        ""
-    shell:
-        '''
-        sqanti3_qc.py \
-            {input.gtf} \
-            {input.annotation} \
-            {input.genome} \
-            --force_id_ignore \
-            --output {params.outdir} \
-            --cpus {threads} \
-            --report both
-        '''
+# rule sqanti3:
+#     input:
+#         gtf = expand("{gtffile}", gtffile=[rules.oxford_merge_stringtie.output.merged_gff, rules.flair_collapse.output.gtf, rules.talon_create_GTF.output.GTF]),
+#         annotation = existing_annotation,
+#         genome = reference_genome,
+#     params:
+#         outdir = lambda wildcards: OUTDIR / "sqanti3" / wildcards.sample
+#     output:
+#         classification = outdir / "sqanti3" / "{gtffile}"
+#     threads: 10
+#     singularity:
+#         ""
+#     shell:
+#         '''
+#         sqanti3_qc.py \
+#             {input.gtf} \
+#             {input.annotation} \
+#             {input.genome} \
+#             --force_id_ignore \
+#             --output {params.outdir} \
+#             --cpus {threads} \
+#             --report both
+#         '''
 
 rule subread_featurecounts:
     """
@@ -828,12 +828,9 @@ rule exon_comparison:
         flair = rules.combine.output.flair_combined,
         talon = rules.combine.output.talon_combined,
     output:
-        oxford_flair_start = report(OUTDIR / "exon_comparison" / "oxford_flair_start.png", caption="report/exon/exon.rst", category="Exon comparison"),
-        oxford_flair_end = report(OUTDIR / "exon_comparison" / "oxford_flair_end.png", caption="report/exon/exon.rst", category="Exon comparison"),
-        oxford_talon_start = report(OUTDIR / "exon_comparison" / "oxford_talon_start.png", caption="report/exon/exon.rst", category="Exon comparison"),
-        oxford_talon_end = report(OUTDIR / "exon_comparison" / "oxford_talon_end.png", caption="report/exon/exon.rst", category="Exon comparison"),
-        flair_talon_start = report(OUTDIR / "exon_comparison" / "flair_talon_start.png", caption="report/exon/exon.rst", category="Exon comparison"),
-        flair_talon_end = report(OUTDIR / "exon_comparison" / "flair_talon_end.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        oxford_flair = report(OUTDIR / "exon_comparison" / "oxford_flair.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        oxford_talon = report(OUTDIR / "exon_comparison" / "oxford_talon.png", caption="report/exon/exon.rst", category="Exon comparison"),
+        flair_talon = report(OUTDIR / "exon_comparison" / "flair_talon.png", caption="report/exon/exon.rst", category="Exon comparison"),
         oxford_flair_summ = report(OUTDIR / "exon_comparison" / "oxford_flair_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),
         oxford_talon_summ = report(OUTDIR / "exon_comparison" / "oxford_talon_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),
         flair_talon_summ = report(OUTDIR / "exon_comparison" / "flair_talon_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),

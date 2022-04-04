@@ -150,59 +150,41 @@ def plot_boxplots(oxford_flair_start, oxford_flair_end,
     plt.rcParams["figure.autolayout"] = True
     plt.rcParams.update({'font.size': 15})
 
-    labels, data = [*zip(*oxford_flair_start.items())]
-    plt.figure()
-    plt.boxplot(data)
-    plt.yscale('log')
-    plt.ylabel('Number of bases')
-    plt.xlabel('Exon number')
-    plt.title('Exon starting position differences between flair and oxford for all transcripts')
-    plt.savefig(snakemake.output.oxford_flair_start, dpi=200)
+    labels_start, data_start = [*zip(*oxford_flair_start.items())]
+    labels_end, data_end = [*zip(*oxford_flair_end.items())]
+    fig_oxford_flair, axs = plt.subplots(2)
+    fig_oxford_flair.suptitle('Exon position differences flair and oxford')
+    axs[0].boxplot(data_start)
+    axs[0].set_yscale('log')
+    axs[0].set_title('Exon start positions')
+    axs[1].boxplot(data_end)
+    axs[1].set_yscale('log')
+    axs[1].set_title('Exon end positions')
+    plt.savefig(snakemake.output.oxford_flair, dpi=200)
 
-    labels, data = [*zip(*oxford_flair_end.items())]
-    plt.figure()
-    plt.boxplot(data)
-    plt.yscale('log')
-    plt.ylabel('Number of bases')
-    plt.xlabel('Exon number')
-    plt.title('Exon ending position differences between flair and oxford for all transcripts')
-    plt.savefig(snakemake.output.oxford_flair_end, dpi=200)
+    labels_start, data_start = [*zip(*oxford_talon_start.items())]
+    labels_end, data_end = [*zip(*oxford_talon_end.items())]
+    fig_oxford_talon, axs = plt.subplots(2)
+    fig_oxford_talon.suptitle('Exon position differences oxford and talon')
+    axs[0].boxplot(data_start)
+    axs[0].set_yscale('log')
+    axs[0].set_title('Exon start positions')
+    axs[1].boxplot(data_end)
+    axs[1].set_yscale('log')
+    axs[1].set_title('Exon end positions')
+    plt.savefig(snakemake.output.oxford_talon, dpi=200)
 
-    labels, data = [*zip(*oxford_talon_start.items())]
-    plt.figure()
-    plt.boxplot(data)
-    plt.yscale('log')
-    plt.ylabel('Number of bases')
-    plt.xlabel('Exon number')
-    plt.title('Exon starting position differences between oxford and talon for all transcripts')
-    plt.savefig(snakemake.output.oxford_talon_start, dpi=200)
-
-    labels, data = [*zip(*oxford_talon_end.items())]
-    plt.figure()
-    plt.boxplot(data)
-    plt.yscale('log')
-    plt.ylabel('Number of bases')
-    plt.xlabel('Exon number')
-    plt.title('Exon ending position differences between oxford and talon for all transcripts')
-    plt.savefig(snakemake.output.oxford_talon_end, dpi=200)
-
-    labels, data = [*zip(*flair_talon_start.items())]
-    plt.figure()
-    plt.boxplot(data)
-    plt.yscale('log')
-    plt.ylabel('Number of bases')
-    plt.xlabel('Exon number')
-    plt.title('Exon starting position differences between flair and talon for all transcripts')
-    plt.savefig(snakemake.output.flair_talon_start, dpi=200)
-
-    labels, data = [*zip(*flair_talon_end.items())]
-    plt.figure()
-    plt.boxplot(data)
-    plt.yscale('log')
-    plt.ylabel('Number of bases')
-    plt.xlabel('Exon number')
-    plt.title('Exon ending position differences between flair and talon for all transcripts')
-    plt.savefig(snakemake.output.flair_talon_end, dpi=200)
+    labels_start, data_start = [*zip(*flair_talon_start.items())]
+    labels_end, data_end = [*zip(*flair_talon_end.items())]
+    fig_flair_talon, axs = plt.subplots(2)
+    fig_flair_talon.suptitle('Exon position differences flair and talon')
+    axs[0].boxplot(data_start)
+    axs[0].set_yscale('log')
+    axs[0].set_title('Exon start positions')
+    axs[1].boxplot(data_end)
+    axs[1].set_yscale('log')
+    axs[1].set_title('Exon end positions')
+    plt.savefig(snakemake.output.flair_talon, dpi=200)
 
 
 def main():
