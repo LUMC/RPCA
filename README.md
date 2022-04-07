@@ -31,8 +31,11 @@ You can run ```snakemake --report report.html``` AFTER the workflow finished to 
 
 # <a name="Troubleshooting"><a/>Troubleshooting
 
+### Transcriptclean
+Transcriptclean requires the reference genome fasta file to only have one string per header.
+
 ### Conda environment fails to build
-Try running the workflow with an older version of snakemake such as version 5.3.2
+Try running the workflow with an older version of snakemake such as version 5.3.2.
 
 
 # <a name="License"><a/>License
