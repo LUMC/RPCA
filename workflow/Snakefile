@@ -89,6 +89,7 @@ rule minimap2_align:
             -t {threads} \
             -ax splice \
             {params.opts} \
+            --MD \
             {input.genome} \
             {input.fq} > {output.sam_files}
         '''
@@ -750,6 +751,24 @@ rule gffcompare:
             -o {params.outdir} \
             {input.oxford} {input.flair} {input.talon}
         '''
+
+rule extract_matches:
+    """
+        Extract transcript matches into GTF files.
+    """
+    input:
+        oxford = rules.combine.output.oxford_combined,
+        flair = rules.combine.output.flair_combined,
+        talon = rules.combine.output.talon_combined,
+        tracking = rules.gffcompare.output.tracking,
+    params:
+        scriptpath = SNAKEFILE.parent / "scripts" / "extract_overlap.py"
+    output:
+        tracking_three = OUTDIR / "05_overlap" / "tracking_three.gtf",
+        tracking_two = OUTDIR / "05_overlap" / "tracking_two.gtf",
+        tracking_one = OUTDIR / "05_overlap" / "no_match.gtf",
+    script:
+        '''scripts/extract_overlap.py'''
 
 rule venn_diagrams:
     """
