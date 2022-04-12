@@ -130,13 +130,12 @@ def writefile(start_dict, end_dict, outfile, header):
             [header],
             ['', 'START', 'END'],
             ['EXON:', start_pos[0], end_pos[0]],
-            ['Number of exons:', len(start_pos[1]), len(end_pos[1])],
             ['Average', np.average(start_pos[1]), np.average(end_pos[1])],
             ['Median:', np.median(start_pos[1]), np.median(end_pos[1])],
             ['Minimum:', np.min(start_pos[1]), np.min(end_pos[1])],
             ['Maximum:', np.max(start_pos[1]), np.max(end_pos[1])]
         ]
-        with open(outfile, 'w') as file:
+        with open(outfile, 'a') as file:
             file.write(tabulate(table, tablefmt="plain") + '\n\n')
 
 
