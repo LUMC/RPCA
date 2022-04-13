@@ -30,7 +30,7 @@ You can run ```snakemake --report report.html``` AFTER the workflow finished to 
 
 # <a name="Notes"><a/>Notes
 
-The GTF files located in the 03_combined and 05_matched_transcripts have a column called TPM. This is not the Actual TPM value but the raw number of counts. The atrribute is hijacked to pass counts to GFFCompare.
+The GTF files located in the 03_combined and 05_matched_transcripts have a column called TPM. This is actuallu the raw number of counts. The attribute is hijacked to pass counts to GFFCompare.
 
 # <a name="Troubleshooting"><a/>Troubleshooting
 
