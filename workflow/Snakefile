@@ -36,8 +36,8 @@ report: "report/workflow.rst"
 rule all:
     input:
         # TALON
-        talon_abundance = OUTDIR / "02_TALON" / 'filtered_talon_abundance_filtered.tsv',
-        talon_GTF = OUTDIR / "02_TALON" / 'filtered_talon.gtf',
+        #talon_abundance = OUTDIR / "02_TALON" / 'filtered_talon_abundance_filtered.tsv',
+        #talon_GTF = OUTDIR / "02_TALON" / 'filtered_talon.gtf',
         #
         # FLAIR
         # flair_abundance = OUTDIR / "02_FLAIR" / "quantify" / "flair_counts_matrix.tsv",
@@ -46,26 +46,30 @@ rule all:
         # ox_transcripts = OUTDIR / "02_OXFORD" / "abundance" / "transcript_count_matrix.csv",
         #
         # ANALYSES
-        # all_diagram = OUTDIR / "QC_notebook_graphs" / "all_overlap_diagram.png",
-        # known_diagram = OUTDIR / "QC_notebook_graphs" / "known_overlap_diagram.png",
-        # novel_diagram = OUTDIR / "QC_notebook_graphs" / "novel_overlap_diagram.png",
-        # all_upset= OUTDIR / "QC_notebook_graphs" / "all_upset.png",
-        # known_upset= OUTDIR / "QC_notebook_graphs" / "known_overlap_upset.png",
-        # novel_upset= OUTDIR / "QC_notebook_graphs" / "novel_overlap_upset.png",
-        # classes = OUTDIR / "QC_notebook_graphs" / "all_gffcompare_classes.png",
-        # threeclasses = OUTDIR / "QC_notebook_graphs" / "all_gffcompare_threeclasses.png",
-        # align = OUTDIR / "QC_notebook_graphs" / "read_alignments.png",
-        # mismatch = OUTDIR / "QC_notebook_graphs" / "read_mismatches.png",
-        # readlen = OUTDIR / "QC_notebook_graphs" / "read_lengths.png",
-        # total = OUTDIR / "QC_notebook_graphs" / "total_count_per_sample.png",
-        # per_feature = OUTDIR / "QC_notebook_graphs" / "counts_per_feature.png",
-        # comp = OUTDIR / "QC_notebook_graphs" / "counts_per_pipeline.png",
-        # oxford_flair = OUTDIR / "QC_exon_comparison" / "oxford_flair.png",
-        # oxford_talon = OUTDIR / "QC_exon_comparison" / "oxford_talon.png",
-        # flair_talon = OUTDIR / "QC_exon_comparison" / "flair_talon.png",
-        # oxford_flair_summ = OUTDIR / "QC_exon_comparison" / "oxford_flair_summ.txt",
-        # oxford_talon_summ = OUTDIR / "QC_exon_comparison" / "oxford_talon_summ.txt",
-        # flair_talon_summ = OUTDIR / "QC_exon_comparison" / "flair_talon_summ.txt",
+        all_diagram = OUTDIR / "QC_notebook_graphs" / "all_overlap_diagram.png",
+        known_diagram = OUTDIR / "QC_notebook_graphs" / "known_overlap_diagram.png",
+        novel_diagram = OUTDIR / "QC_notebook_graphs" / "novel_overlap_diagram.png",
+        all_upset= OUTDIR / "QC_notebook_graphs" / "all_upset.png",
+        known_upset= OUTDIR / "QC_notebook_graphs" / "known_overlap_upset.png",
+        novel_upset= OUTDIR / "QC_notebook_graphs" / "novel_overlap_upset.png",
+        classes = OUTDIR / "QC_notebook_graphs" / "all_gffcompare_classes.png",
+        align = OUTDIR / "QC_notebook_graphs" / "read_alignments.png",
+        mismatch = OUTDIR / "QC_notebook_graphs" / "read_mismatches.png",
+        readlen = OUTDIR / "QC_notebook_graphs" / "read_lengths.png",
+        total = OUTDIR / "QC_notebook_graphs" / "total_count_per_sample.png",
+        per_feature = OUTDIR / "QC_notebook_graphs" / "counts_per_feature.png",
+        comp = OUTDIR / "QC_notebook_graphs" / "counts_per_pipeline.png",
+        oxford_flair = OUTDIR / "QC_exon_comparison" / "oxford_flair.png",
+        oxford_talon = OUTDIR / "QC_exon_comparison" / "oxford_talon.png",
+        flair_talon = OUTDIR / "QC_exon_comparison" / "flair_talon.png",
+        oxford_flair_summ = OUTDIR / "QC_exon_comparison" / "oxford_flair_summ.txt",
+        oxford_talon_summ = OUTDIR / "QC_exon_comparison" / "oxford_talon_summ.txt",
+        flair_talon_summ = OUTDIR / "QC_exon_comparison" / "flair_talon_summ.txt",
+        tracking_three = OUTDIR / "05_matched_transcripts" / "three_match.gtf",
+        tracking_two = OUTDIR / "05_matched_transcripts" / "two_match.gtf",
+        tracking_one = OUTDIR / "05_matched_transcripts" / "no_match.gtf",
+        # classification = expand(OUTDIR / "QC_sqanti3" / "{gtf}" / "{gtf}_classification.txt", gtf=["02_TALON/filtered_talon", "02_FLAIR/collapse/flair.collapse.isoforms", "02_OXFORD/stringtie_output/oxford_merged"])
+
 
 
 rule minimap2_align:
@@ -239,7 +243,6 @@ rule talon_initialize_annotate_database:
             --5p {params.end5} \
             --3p {params.end3} \
             --o {params.outdir}
-        echo "completed init"
         
         talon \
             --f {input.config} \
@@ -247,7 +250,6 @@ rule talon_initialize_annotate_database:
             --build {params.genome_name} \
             --o {params.outdir} \
             -t {threads}
-        echo "completed annot"
         '''
 
 rule talon_filter_transcripts:
@@ -655,36 +657,36 @@ rule oxford_calc_abundance:
 #    analyses    #
 ##################
 
-# rule sqanti3:
-#     input:
-#         gtf = expand("{gtffile}", gtffile=[rules.oxford_merge_stringtie.output.merged_gff, rules.flair_collapse.output.gtf, rules.talon_create_GTF.output.GTF]),
-#         annotation = existing_annotation,
-#         genome = reference_genome,
-#     params:
-#         outdir = lambda wildcards: OUTDIR / "sqanti3" / wildcards.sample
-#     output:
-#         classification = outdir / "sqanti3" / "{gtffile}"
-#     threads: 10
-#     singularity:
-#         ""
-#     shell:
-#         '''
-#         sqanti3_qc.py \
-#             {input.gtf} \
-#             {input.annotation} \
-#             {input.genome} \
-#             --force_id_ignore \
-#             --output {params.outdir} \
-#             --cpus {threads} \
-#             --report both
-#         '''
+rule sqanti3:
+    input:
+        gtfs = expand(OUTDIR / "{gtf}.gtf", gtf=["02_TALON/filtered_talon", "02_FLAIR/collapse/flair.collapse.isoforms", "02_OXFORD/stringtie_output/oxford_merged"]),
+        annotation = existing_annotation,
+        genome = reference_genome,
+    params:
+        outdir = lambda wildcards: OUTDIR / "QC_sqanti3" / wildcards.gtf
+    output:
+        classification = OUTDIR / "QC_sqanti3" / "{gtf}" / "{gtf}_classification.txt"
+    threads: 10
+    singularity:
+        "docker://quay.io/adeslatt/sqanti3-quay:snyk-fix-1ab15f9859734fbe9c13815bdfbab8f5"
+    shell:
+        '''
+        sqanti3_qc.py \
+            {input.gtf} \
+            {input.annotation} \
+            {input.genome} \
+            --force_id_ignore \
+            --output {params.outdir} \
+            --cpus {threads} \
+            --report both
+        '''
 
 rule subread_featurecounts:
     """
     Calculate counts from the annotation file with Subread.
     """
     input:
-        bams = expand(OUTDIR / "alignments" / "bam" / "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        bams = expand(OUTDIR / "01_alignments" / "bam" / "{sample}_sorted.bam",sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         annotation = existing_annotation,
     output:
         counts = OUTDIR / "QC_statistics" / "annotation_count.txt"
@@ -721,6 +723,7 @@ rule combine:
         oxford_combined = OUTDIR / "03_combined" / "oxford_counts.gtf",
         flair_combined = OUTDIR / "03_combined" / "flair_counts.gtf",
         talon_combined = OUTDIR / "03_combined" / "talon_counts.gtf",
+        missing_transcripts = OUTDIR / "03_combined" / "missing_transcripts.log",
     threads: 1
     script:
         '''scripts/combine.py'''
@@ -754,7 +757,7 @@ rule gffcompare:
 
 rule extract_matches:
     """
-        Extract transcript matches into GTF files.
+    Extract transcript matches into GTF files.
     """
     input:
         oxford = rules.combine.output.oxford_combined,
@@ -764,9 +767,9 @@ rule extract_matches:
     params:
         scriptpath = SNAKEFILE.parent / "scripts" / "extract_overlap.py"
     output:
-        tracking_three = OUTDIR / "05_overlap" / "tracking_three.gtf",
-        tracking_two = OUTDIR / "05_overlap" / "tracking_two.gtf",
-        tracking_one = OUTDIR / "05_overlap" / "no_match.gtf",
+        tracking_three = OUTDIR / "05_matched_transcripts" / "three_match.gtf",
+        tracking_two = OUTDIR / "05_matched_transcripts" / "two_match.gtf",
+        tracking_one = OUTDIR / "05_matched_transcripts" / "no_match.gtf",
     script:
         '''scripts/extract_overlap.py'''
 
@@ -777,14 +780,13 @@ rule venn_diagrams:
     input:
         tracking = rules.gffcompare.output.tracking
     output:
-        all_diagram = report(OUTDIR / "QC_notebook_graphs" / "all_overlap_diagram.png", caption="report/transcript_overlap/all_diagram.rst", category="Transcript overlap"),
-        known_diagram = report(OUTDIR / "QC_notebook_graphs" / "known_overlap_diagram.png", caption="report/transcript_overlap/known_diagram.rst", category="Transcript overlap"),
-        novel_diagram = report(OUTDIR / "QC_notebook_graphs" / "novel_overlap_diagram.png", caption="report/transcript_overlap/novel_diagram.rst", category="Transcript overlap"),
-        all_upset = report(OUTDIR / "QC_notebook_graphs" / "all_upset.png", caption="report/transcript_overlap/all_upset.rst", category="Transcript overlap"),
-        known_upset = report(OUTDIR / "QC_notebook_graphs" / "known_overlap_upset.png", caption="report/transcript_overlap/known_upset.rst", category="Transcript overlap"),
-        novel_upset = report(OUTDIR / "QC_notebook_graphs" / "novel_overlap_upset.png", caption="report/transcript_overlap/novel_upset.rst", category="Transcript overlap"),
-        classes = report(OUTDIR / "QC_notebook_graphs" / "all_gffcompare_classes.png", caption="report/transcript_overlap/classes.rst", category="Transcript overlap"),
-        threeclasses= report(OUTDIR / "QC_notebook_graphs" / "all_gffcompare_threeclasses.png",caption="report/transcript_overlap/classes.rst",category="Transcript overlap"),
+        all_diagram = report(OUTDIR / "QC_notebook_graphs" / "all_overlap_diagram.png", caption="report/transcript_overlap/all_diagram.rst", category="Transcript overlap graphs"),
+        known_diagram = report(OUTDIR / "QC_notebook_graphs" / "known_overlap_diagram.png", caption="report/transcript_overlap/known_diagram.rst", category="Transcript overlap graphs"),
+        novel_diagram = report(OUTDIR / "QC_notebook_graphs" / "novel_overlap_diagram.png", caption="report/transcript_overlap/novel_diagram.rst", category="Transcript overlap graphs"),
+        all_upset = report(OUTDIR / "QC_notebook_graphs" / "all_upset.png", caption="report/transcript_overlap/all_upset.rst", category="Transcript overlap graphs"),
+        known_upset = report(OUTDIR / "QC_notebook_graphs" / "known_overlap_upset.png", caption="report/transcript_overlap/known_upset.rst", category="Transcript overlap graphs"),
+        novel_upset = report(OUTDIR / "QC_notebook_graphs" / "novel_overlap_upset.png", caption="report/transcript_overlap/novel_upset.rst", category="Transcript overlap graphs"),
+        classes = report(OUTDIR / "QC_notebook_graphs" / "all_gffcompare_classes.png", caption="report/transcript_overlap/classes.rst", category="Transcript overlap graphs"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -802,9 +804,9 @@ rule alignment_stats:
     params:
         datasetnames = [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
-        align = report(OUTDIR / "QC_notebook_graphs" / "read_alignments.png", caption="report/alignment/align.rst", category="Alignment"),
-        mismatch = report(OUTDIR / "QC_notebook_graphs" / "read_mismatches.png", caption="report/alignment/mismatch.rst", category="Alignment"),
-        readlen = report(OUTDIR / "QC_notebook_graphs" / "read_lengths.png", caption="report/alignment/readlen.rst", category="Alignment"),
+        align = report(OUTDIR / "QC_notebook_graphs" / "read_alignments.png", caption="report/alignment/align.rst", category="Alignment statistics"),
+        mismatch = report(OUTDIR / "QC_notebook_graphs" / "read_mismatches.png", caption="report/alignment/mismatch.rst", category="Alignment statistics"),
+        readlen = report(OUTDIR / "QC_notebook_graphs" / "read_lengths.png", caption="report/alignment/readlen.rst", category="Alignment statistics"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -825,9 +827,9 @@ rule count_stats:
     params:
         datasetnames = [".".join(read.name.split('.')[:-1]) for read in READS]
     output:
-        total = report(OUTDIR / "QC_notebook_graphs" / "total_count_per_sample.png", caption="report/abundance/total.rst", category="Abundance"),
-        per_feature = report(OUTDIR / "QC_notebook_graphs" / "counts_per_feature.png", caption="report/abundance/per_feature.rst", category="Abundance"),
-        comp = report(OUTDIR / "QC_notebook_graphs" / "counts_per_pipeline.png", caption="report/abundance/comp.rst", category="Abundance"),
+        total = report(OUTDIR / "QC_notebook_graphs" / "total_count_per_sample.png", caption="report/abundance/total.rst", category="Abundance graphs"),
+        per_feature = report(OUTDIR / "QC_notebook_graphs" / "counts_per_feature.png", caption="report/abundance/per_feature.rst", category="Abundance graphs"),
+        comp = report(OUTDIR / "QC_notebook_graphs" / "counts_per_pipeline.png", caption="report/abundance/comp.rst", category="Abundance graphs"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
@@ -847,12 +849,12 @@ rule exon_comparison:
         flair = rules.combine.output.flair_combined,
         talon = rules.combine.output.talon_combined,
     output:
-        oxford_flair = report(OUTDIR / "QC_exon_comparison" / "oxford_flair.png", caption="report/exon/exon.rst", category="Exon comparison"),
-        oxford_talon = report(OUTDIR / "QC_exon_comparison" / "oxford_talon.png", caption="report/exon/exon.rst", category="Exon comparison"),
-        flair_talon = report(OUTDIR / "QC_exon_comparison" / "flair_talon.png", caption="report/exon/exon.rst", category="Exon comparison"),
-        oxford_flair_summ = report(OUTDIR / "QC_exon_comparison" / "oxford_flair_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),
-        oxford_talon_summ = report(OUTDIR / "QC_exon_comparison" / "oxford_talon_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),
-        flair_talon_summ = report(OUTDIR / "QC_exon_comparison" / "flair_talon_summ.txt", caption="report/exon/exon_sum.rst", category="Exon comparison"),
+        oxford_flair = report(OUTDIR / "QC_exon_comparison" / "oxford_flair.png", caption="report/exon/exon.rst", category="GFFcompare exon matching boxplots"),
+        oxford_talon = report(OUTDIR / "QC_exon_comparison" / "oxford_talon.png", caption="report/exon/exon.rst", category="GFFcompare exon matching boxplots"),
+        flair_talon = report(OUTDIR / "QC_exon_comparison" / "flair_talon.png", caption="report/exon/exon.rst", category="GFFcompare exon matching boxplots"),
+        oxford_flair_summ = report(OUTDIR / "QC_exon_comparison" / "oxford_flair_summ.txt", caption="report/exon/exon_sum.rst", category="GFFcompare exon matching boxplots"),
+        oxford_talon_summ = report(OUTDIR / "QC_exon_comparison" / "oxford_talon_summ.txt", caption="report/exon/exon_sum.rst", category="GFFcompare exon matching boxplots"),
+        flair_talon_summ = report(OUTDIR / "QC_exon_comparison" / "flair_talon_summ.txt", caption="report/exon/exon_sum.rst", category="GFFcompare exon matching boxplots"),
     threads: 1
     conda:
         "envs/notebooks.yaml"
