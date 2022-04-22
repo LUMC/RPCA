@@ -36,8 +36,8 @@ report: "report/workflow.rst"
 rule all:
     input:
         # TALON
-        #talon_abundance = OUTDIR / "02_TALON" / 'filtered_talon_abundance_filtered.tsv',
-        #talon_GTF = OUTDIR / "02_TALON" / 'filtered_talon.gtf',
+        # talon_abundance = OUTDIR / "02_TALON" / 'filtered_talon_abundance_filtered.tsv',
+        # talon_GTF = OUTDIR / "02_TALON" / 'filtered_talon.gtf',
         #
         # FLAIR
         # flair_abundance = OUTDIR / "02_FLAIR" / "quantify" / "flair_counts_matrix.tsv",
@@ -46,31 +46,53 @@ rule all:
         # ox_transcripts = OUTDIR / "02_OXFORD" / "abundance" / "transcript_count_matrix.csv",
         #
         # ANALYSES
-        all_diagram = OUTDIR / "QC_notebook_graphs" / "all_overlap_diagram.png",
-        known_diagram = OUTDIR / "QC_notebook_graphs" / "known_overlap_diagram.png",
-        novel_diagram = OUTDIR / "QC_notebook_graphs" / "novel_overlap_diagram.png",
-        all_upset= OUTDIR / "QC_notebook_graphs" / "all_upset.png",
-        known_upset= OUTDIR / "QC_notebook_graphs" / "known_overlap_upset.png",
-        novel_upset= OUTDIR / "QC_notebook_graphs" / "novel_overlap_upset.png",
-        classes = OUTDIR / "QC_notebook_graphs" / "all_gffcompare_classes.png",
-        align = OUTDIR / "QC_notebook_graphs" / "read_alignments.png",
-        mismatch = OUTDIR / "QC_notebook_graphs" / "read_mismatches.png",
-        readlen = OUTDIR / "QC_notebook_graphs" / "read_lengths.png",
-        total = OUTDIR / "QC_notebook_graphs" / "total_count_per_sample.png",
-        per_feature = OUTDIR / "QC_notebook_graphs" / "counts_per_feature.png",
-        comp = OUTDIR / "QC_notebook_graphs" / "counts_per_pipeline.png",
-        oxford_flair = OUTDIR / "QC_exon_comparison" / "oxford_flair.png",
-        oxford_talon = OUTDIR / "QC_exon_comparison" / "oxford_talon.png",
-        flair_talon = OUTDIR / "QC_exon_comparison" / "flair_talon.png",
-        oxford_flair_summ = OUTDIR / "QC_exon_comparison" / "oxford_flair_summ.txt",
-        oxford_talon_summ = OUTDIR / "QC_exon_comparison" / "oxford_talon_summ.txt",
-        flair_talon_summ = OUTDIR / "QC_exon_comparison" / "flair_talon_summ.txt",
-        tracking_three = OUTDIR / "05_matched_transcripts" / "three_match.gtf",
-        tracking_two = OUTDIR / "05_matched_transcripts" / "two_match.gtf",
-        tracking_one = OUTDIR / "05_matched_transcripts" / "no_match.gtf",
+        # all_diagram = OUTDIR / "QC_notebook_graphs" / "all_overlap_diagram.png",
+        # known_diagram = OUTDIR / "QC_notebook_graphs" / "known_overlap_diagram.png",
+        # novel_diagram = OUTDIR / "QC_notebook_graphs" / "novel_overlap_diagram.png",
+        # all_upset= OUTDIR / "QC_notebook_graphs" / "all_upset.png",
+        # known_upset= OUTDIR / "QC_notebook_graphs" / "known_overlap_upset.png",
+        # novel_upset= OUTDIR / "QC_notebook_graphs" / "novel_overlap_upset.png",
+        # classes = OUTDIR / "QC_notebook_graphs" / "all_gffcompare_classes.png",
+        # align = OUTDIR / "QC_notebook_graphs" / "read_alignments.png",
+        # mismatch = OUTDIR / "QC_notebook_graphs" / "read_mismatches.png",
+        # readlen = OUTDIR / "QC_notebook_graphs" / "read_lengths.png",
+        # total = OUTDIR / "QC_notebook_graphs" / "total_count_per_sample.png",
+        # per_feature = OUTDIR / "QC_notebook_graphs" / "counts_per_feature.png",
+        # comp = OUTDIR / "QC_notebook_graphs" / "counts_per_pipeline.png",
+        # oxford_flair = OUTDIR / "QC_exon_comparison" / "oxford_flair.png",
+        # oxford_talon = OUTDIR / "QC_exon_comparison" / "oxford_talon.png",
+        # flair_talon = OUTDIR / "QC_exon_comparison" / "flair_talon.png",
+        # oxford_flair_summ = OUTDIR / "QC_exon_comparison" / "oxford_flair_summ.txt",
+        # oxford_talon_summ = OUTDIR / "QC_exon_comparison" / "oxford_talon_summ.txt",
+        # flair_talon_summ = OUTDIR / "QC_exon_comparison" / "flair_talon_summ.txt",
+        # tracking_three = OUTDIR / "05_matched_transcripts" / "three_match.gtf",
+        # tracking_two = OUTDIR / "05_matched_transcripts" / "two_match.gtf",
+        # tracking_one = OUTDIR / "05_matched_transcripts" / "no_match.gtf",
         # classification = expand(OUTDIR / "QC_sqanti3" / "{gtf}" / "{gtf}_classification.txt", gtf=["02_TALON/filtered_talon", "02_FLAIR/collapse/flair.collapse.isoforms", "02_OXFORD/stringtie_output/oxford_merged"])
+        plots = expand(OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
 
-
+rule nanoplot:
+    """
+    Fastq Nanopore statistics
+    """
+    input:
+        fq = READSDIR / "{sample}.fastq"
+    params:
+        prefix = lambda wildcards: wildcards.sample + '_',
+        outdir = lambda wildcards: OUTDIR / "QC_nanoplot" / wildcards.sample
+    output:
+        plot =  OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt"
+    threads: 10
+    singularity: "docker://quay.io/biocontainers/nanoplot:1.40.0--pyhdfd78af_0"
+    shell:
+        '''
+        NanoPlot \
+        -t {threads} \
+        --fastq {input.fq} \
+        --plots dot kde \
+        -p {params.prefix} \
+        -o {params.outdir}
+        '''
 
 rule minimap2_align:
     """
@@ -176,7 +198,6 @@ rule talon_label_reads:
     """
     input:
         clean_sam = rules.transcriptclean.output.clean_sam,
-        # sam_files = rules.minimap2_align.output.sam_files,
         genome = reference_genome
     params:
         outdir = lambda wildcards: OUTDIR / "02_TALON" / "labeled" / wildcards.sample,
@@ -243,6 +264,7 @@ rule talon_initialize_annotate_database:
             --5p {params.end5} \
             --3p {params.end3} \
             --o {params.outdir}
+        echo database init done
         
         talon \
             --f {input.config} \
@@ -250,6 +272,7 @@ rule talon_initialize_annotate_database:
             --build {params.genome_name} \
             --o {params.outdir} \
             -t {threads}
+        echo database annotation done
         '''
 
 rule talon_filter_transcripts:
@@ -659,20 +682,21 @@ rule oxford_calc_abundance:
 
 rule sqanti3:
     input:
-        gtfs = expand(OUTDIR / "{gtf}.gtf", gtf=["02_TALON/filtered_talon", "02_FLAIR/collapse/flair.collapse.isoforms", "02_OXFORD/stringtie_output/oxford_merged"]),
+        gtf_input = OUTDIR / "{gtf}.gtf",
         annotation = existing_annotation,
         genome = reference_genome,
     params:
         outdir = lambda wildcards: OUTDIR / "QC_sqanti3" / wildcards.gtf
     output:
         classification = OUTDIR / "QC_sqanti3" / "{gtf}" / "{gtf}_classification.txt"
+        # classification = str(OUTDIR) + "/" + "QC_sqanti3" + "/" + "{gtf}"  + "/" + "{gtf}" + "_classification.txt"
     threads: 10
     singularity:
-        "docker://quay.io/adeslatt/sqanti3-quay:snyk-fix-1ab15f9859734fbe9c13815bdfbab8f5"
+        "/exports/sascstudent/dbayraktar/sqanti3_4.2_docker.sif"
     shell:
         '''
         sqanti3_qc.py \
-            {input.gtf} \
+            {input.gtf_input} \
             {input.annotation} \
             {input.genome} \
             --force_id_ignore \
