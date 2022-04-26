@@ -1,7 +1,7 @@
 """
 Dogukan Bayraktar
 Python Version 3.9.7
-Sort overlaping transcripts into GTF by match
+Sort overlapping transcripts into GTF by match
 """
 from collections import defaultdict
 
@@ -14,26 +14,30 @@ def categorize_tracking(tracking_file):
     :return: Key: TCONS_xx Value: [transcript_id, transcripts_id,
     transcript_id]
     """
-    threematch, twomatch, nomatch = {}, {}, {}
-
     with open(tracking_file, 'r') as tracking:
+        three_match, two_match, no_match = {}, {}, {}
         for line in tracking:
             line = line.split()
             transcripts = line[4::]
             transcript_ids = []
 
+            count = 0
             for transcript in transcripts:
-                if transcript != '-':
+                if transcript == '-':
+                    count += 1
+                    transcript_id = transcript
+                else:
                     transcript_id = transcript.split('|')[1]
-                    transcript_ids.append(transcript_id)
+                transcript_ids.append(transcript_id)
 
-            if len(transcript_ids) == 3:
-                threematch[line[0]] = transcript_ids
-            elif len(transcript_ids) == 2:
-                twomatch[line[0]] = transcript_ids
+            if count == 1:
+                two_match[line[0]] = transcript_ids
+            elif count == 2:
+                no_match[line[0]] = transcript_ids
             else:
-                nomatch[line[0]] = transcript_ids
-    return threematch, twomatch, nomatch
+                three_match[line[0]] = transcript_ids
+    return three_match, two_match, no_match
+
 
 def gtf(file):
     """
@@ -53,6 +57,7 @@ def gtf(file):
             gtf_dict[transcript_id].append(line.strip('\n'))
     return gtf_dict
 
+
 def write(tracking_dict, oxford, flair, talon, outfile):
     """
     Creates new sorted GTF file containing all matched transcripts.
@@ -65,24 +70,16 @@ def write(tracking_dict, oxford, flair, talon, outfile):
     """
     with open(outfile, 'w') as out:
         for tcons_id, transcipt_ids, in tracking_dict.items():
-
-            try:
+            # transcript order: q1 oxford, q2 flair, q3 talon
+            if transcipt_ids[0] != '-':
                 for line in oxford[transcipt_ids[0]]:
                     out.write(f'{line} match_id "{tcons_id}";\n')
-            except IndexError:
-                pass
-
-            try:
+            elif transcipt_ids[1] != '-':
                 for line in flair[transcipt_ids[1]]:
                     out.write(f'{line} match_id "{tcons_id}";\n')
-            except IndexError:
-                pass
-
-            try:
+            else:
                 for line in talon[transcipt_ids[2]]:
                     out.write(f'{line} match_id "{tcons_id}";\n')
-            except IndexError:
-                pass
 
 
 def main():
@@ -99,8 +96,5 @@ def main():
     write(tracking_two, oxford, flair, talon, snakemake.output.tracking_two)
     write(tracking_one, oxford, flair, talon, snakemake.output.tracking_one)
 
+
 main()
-
-
-
-
