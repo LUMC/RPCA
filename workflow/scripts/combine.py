@@ -5,6 +5,12 @@ Adds transcript counts to GTF files for FLAIR, TALON, and OXFORD.
 """
 import logging
 
+# Setup logging
+logging.basicConfig(filename=snakemake.output.missing_transcripts,
+                    level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s %(name)s %(message)s')
+logger = logging.getLogger(__name__)
+
 
 def format_oxford(abundance):
     """
@@ -89,12 +95,6 @@ def combine(gtf_file, counts, output):
     :param output: Output directory and file name
     :return: Writes a file to the output param
     """
-    # Setup logging
-    logging.basicConfig(filename=output + '_missing_transcripts.log',
-                        level=logging.DEBUG,
-                        format='%(asctime)s %(levelname)s %(name)s %(message)s')
-    logger = logging.getLogger(__name__)
-
     # Read the GTF file
     with open(gtf_file) as GTF, open(output, 'w') as outfile:
         for line in GTF:
@@ -111,10 +111,11 @@ def combine(gtf_file, counts, output):
                         gene_id = line.split()[9][1:-2]
                         new_transcript_id = f'{transcript_id}_{gene_id}'
                         count = counts[new_transcript_id]
-                    except KeyError as err:
+                    except KeyError:
                         # transcript is actually missing
                         # Add missing transcript id to missing transcripts.log
-                        logger.error(err)
+                        origin_file = gtf_file.split('/')[-1]
+                        logger.error(f'ORIGIN: {origin_file} FIRST TRY: {transcript_id} SECOND TRY: {new_transcript_id}')
                         count = 0
                 # Add transcript count to end of line and write to file
                 # counts are not in TPM, hijacking the column for use with GFFcompare
@@ -135,16 +136,19 @@ def main():
     flair_gtf = snakemake.input.flair_transcripts
     flair_dict = format_flair(flair_abundance)
     combine(flair_gtf, flair_dict, snakemake.output.flair_combined)
+    flair_dict.clear()
 
     ox_abundance = snakemake.input.oxford_count
     ox_gtf = snakemake.input.oxford_transcript
     ox_dict = format_oxford(ox_abundance)
     combine(ox_gtf, ox_dict, snakemake.output.oxford_combined)
+    ox_dict.clear()
 
     talon_abundance = snakemake.input.talon_count
     talon_gtf = snakemake.input.talon_transcripts
     talon_dict = format_talon(talon_abundance)
     combine(talon_gtf, talon_dict, snakemake.output.talon_combined)
+    talon_dict.clear()
 
 
 main()

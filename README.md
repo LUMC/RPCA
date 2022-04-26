@@ -28,11 +28,17 @@ Note ** : Specify number of available threads here.
 
 You can run ```snakemake --report report.html``` AFTER the workflow finished to create a report containing results.
 
+# <a name="Notes"><a/>Notes
+
+The GTF files located in the 03_combined and 05_matched_transcripts have a column called TPM. This is actuallu the raw number of counts. The attribute is hijacked to pass counts to GFFCompare.
 
 # <a name="Troubleshooting"><a/>Troubleshooting
 
+### Transcriptclean
+Transcriptclean requires the reference genome fasta file to only have one string per header.
+
 ### Conda environment fails to build
-Try running the workflow with an older version of snakemake such as version 5.3.2
+Try running the workflow with an older version of snakemake such as version 5.3.2.
 
 
 # <a name="License"><a/>License
