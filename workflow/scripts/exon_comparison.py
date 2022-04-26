@@ -145,7 +145,7 @@ def plot_boxplots(oxford_flair_start, oxford_flair_end,
     """
     Plot data as boxplots.
     """
-    plt.rcParams["figure.figsize"] = [10, 10]
+    plt.rcParams["figure.figsize"] = [15, 10]
     plt.rcParams["figure.autolayout"] = True
     plt.rcParams.update({'font.size': 15})
 
@@ -156,9 +156,11 @@ def plot_boxplots(oxford_flair_start, oxford_flair_end,
     axs[0].boxplot(data_start)
     axs[0].set_yscale('log')
     axs[0].set_title('Exon start positions')
+    axs[0].set_xticklabels(labels_start, rotation=45)
     axs[1].boxplot(data_end)
     axs[1].set_yscale('log')
     axs[1].set_title('Exon end positions')
+    axs[1].set_xticklabels(labels_end, rotation=45)
     plt.savefig(snakemake.output.oxford_flair, dpi=200)
 
     labels_start, data_start = [*zip(*oxford_talon_start.items())]
@@ -168,9 +170,11 @@ def plot_boxplots(oxford_flair_start, oxford_flair_end,
     axs[0].boxplot(data_start)
     axs[0].set_yscale('log')
     axs[0].set_title('Exon start positions')
+    axs[0].set_xticklabels(labels_start, rotation=45)
     axs[1].boxplot(data_end)
     axs[1].set_yscale('log')
     axs[1].set_title('Exon end positions')
+    axs[1].set_xticklabels(labels_end, rotation=45)
     plt.savefig(snakemake.output.oxford_talon, dpi=200)
 
     labels_start, data_start = [*zip(*flair_talon_start.items())]
@@ -180,9 +184,11 @@ def plot_boxplots(oxford_flair_start, oxford_flair_end,
     axs[0].boxplot(data_start)
     axs[0].set_yscale('log')
     axs[0].set_title('Exon start positions')
+    axs[0].set_xticklabels(labels_start, rotation=45)
     axs[1].boxplot(data_end)
     axs[1].set_yscale('log')
     axs[1].set_title('Exon end positions')
+    axs[1].set_xticklabels(labels_end, rotation=45)
     plt.savefig(snakemake.output.flair_talon, dpi=200)
 
 
