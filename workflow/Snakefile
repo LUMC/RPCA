@@ -69,7 +69,8 @@ rule all:
         # tracking_two = OUTDIR / "05_matched_transcripts" / "two_match.gtf",
         # tracking_one = OUTDIR / "05_matched_transcripts" / "no_match.gtf",
         # classification = expand(OUTDIR / "QC_sqanti3" / "{gtf}" / "{gtf}_classification.txt", gtf=["02_TALON/filtered_talon", "02_FLAIR/collapse/flair.collapse.isoforms", "02_OXFORD/stringtie_output/oxford_merged"])
-        plots = expand(OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
+        # plots = expand(OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
+        qc_report = OUTDIR / "QC_muliqc" / "multiqc_report.html"
 
 rule nanoplot:
     """
@@ -732,7 +733,7 @@ rule subread_featurecounts:
 rule combine:
     """
     Adds counts from the abundance file to the transcripts in the GTF
-    file.
+    file. Filter out missing and 0 count transcripts.
     """
     input:
         oxford_count = rules.oxford_calc_abundance.output.transcripts,
@@ -745,9 +746,12 @@ rule combine:
         scriptpath = SNAKEFILE.parent / "scripts" / "combine.py"
     output:
         oxford_combined = OUTDIR / "03_combined" / "oxford_counts.gtf",
+        oxford_removed = OUTDIR / "03_combined" / "oxford_removed.gtf",
         flair_combined = OUTDIR / "03_combined" / "flair_counts.gtf",
+        flair_removed = OUTDIR / "03_combined" / "flair_removed.gtf",
         talon_combined = OUTDIR / "03_combined" / "talon_counts.gtf",
-        missing_transcripts = OUTDIR / "03_combined" / "missing_transcripts.log",
+        talon_removed = OUTDIR / "03_combined" / "talon_removed.gtf",
+        removed_transcripts = OUTDIR / "03_combined" / "removed_transcripts.log",
     threads: 1
     script:
         '''scripts/combine.py'''
@@ -883,3 +887,27 @@ rule exon_comparison:
     conda:
         "envs/notebooks.yaml"
     script: '''scripts/exon_comparison.py'''
+
+rule multiQC:
+    """
+    Generate MultiQC report for Samtools-stats, NanoPlot,
+    and subread featurecount.
+    """
+    params:
+        samtools_subread_dir = OUTDIR / "QC_statistics",
+        nanoplot_dir = OUTDIR / "QC_nanoplot",
+        outdir = OUTDIR / "QC_muliqc"
+    output:
+        qc_report = OUTDIR / "QC_muliqc" / "multiqc_report.html"
+    threads: 1
+    singularity:
+        "docker://quay.io/biocontainers/multiqc:1.12--pyhdfd78af_0"
+    shell:
+        '''
+        multiqc \
+        {params.nanoplot_dir} \
+        {params.samtools_subread_dir} \
+        --outdir {params.outdir}
+        '''
+
+
