@@ -68,8 +68,8 @@ rule all:
         # tracking_three = OUTDIR / "05_matched_transcripts" / "three_match.gtf",
         # tracking_two = OUTDIR / "05_matched_transcripts" / "two_match.gtf",
         # tracking_one = OUTDIR / "05_matched_transcripts" / "no_match.gtf",
-        # classification = expand(OUTDIR / "QC_sqanti3" / "{gtf}" / "{gtf}_classification.txt", gtf=["02_TALON/filtered_talon", "02_FLAIR/collapse/flair.collapse.isoforms", "02_OXFORD/stringtie_output/oxford_merged"])
-        # plots = expand(OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt", sample=[".".join(read.name.split('.')[:-1]) for read in READS])
+        # classification = expand(OUTDIR / "QC_sqanti3" / "{gtf}" / "{gtf}_classification.txt", gtf=["02_TALON/filtered_talon", "02_FLAIR/collapse/flair.collapse.isoforms", "02_OXFORD/stringtie_output/oxford_merged"]),
+        # plots = expand(OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
         qc_report = OUTDIR / "QC_muliqc" / "multiqc_report.html"
 
 rule nanoplot:
@@ -529,7 +529,7 @@ rule samtool_stats:
         samtools stats \
             --reference {input.reference} \
             --threads {threads} \
-            {input.bam} | grep ^SN | cut -f 2- > {output.stats}
+            {input.bam} > {output.stats}
         '''
 
 
@@ -664,7 +664,7 @@ rule oxford_calc_abundance:
         declare -i calc=0;
         for line in {input.stats}
         do
-           numb=$(awk 'NR==26 {{print $3}}' < ${{line}});
+           numb=$(awk 'NR==33 {{print $4}}' < ${{line}});
            calc+=$((${{numb}}));
         done;
         words=$(echo {input.stats} | wc -w);
