@@ -6,7 +6,6 @@ Compare exon positions of transcripts matched by GFFcompare
 from collections import defaultdict
 import numpy as np
 import matplotlib.pyplot as plt
-from tabulate import tabulate
 
 
 def tracking(gfftracking):
@@ -68,7 +67,15 @@ def merge(tcons, oxford, flair, talon):
     """
     tcons_exon = {}
     for key, value in tcons.items():
-        tcons_exon[key] = [oxford[value[0]], flair[value[1]], talon[value[2]]]
+        # no need to select terminal exons for single-exon transcripts
+        if len(oxford[value[0]]) == 1:
+            tcons_exon[key] = [oxford[value[0]], flair[value[1]], talon[value[2]]]
+        # Slice terminal exons for multi-exon transcripts
+        else:
+            ox_start_end = [oxford[value[0]][0], oxford[value[0]][-1]]
+            fl_start_end = [flair[value[1]][0], flair[value[1]][-1]]
+            ta_start_end = [talon[value[2]][0], talon[value[2]][-1]]
+            tcons_exon[key] = [ox_start_end, fl_start_end, ta_start_end]
     return tcons_exon
 
 
@@ -99,97 +106,87 @@ def calculate_difference(transcript_exons):
 
 def start_end(compare):
     """
-    Create two dictionaries. Start dict contains differences of all
-    starting positions of exons. End dict contains differences of all ending
-    positions of exons.
+    Create four dictionaries. Start dict contains differences of all
+    starting positions of exons. End dict contains differences of all
+    ending positions of exons.
 
     :param compare: Dictionary with calculated differences.
     :return: Dictionaries with start and end positions.
     """
-    exon_start = defaultdict(list)
-    exon_end = defaultdict(list)
+    start_exon_start = defaultdict(list)
+    start_exon_end = defaultdict(list)
+    end_exon_start = defaultdict(list)
+    end_exon_end = defaultdict(list)
+    single_exon_start = defaultdict(list)
+    single_exon_end = defaultdict(list)
     for positions in compare:
-        for number, position in enumerate(positions):
-            exon_start[number].append(abs(position[0]))
-            exon_end[number].append(abs(position[1]))
-    return exon_start, exon_end
+        # single exon transcripts
+        if len(positions) == 1:
+            single_exon_start['0'].append(abs(positions[0][0]))
+            single_exon_end['0'].append(abs(positions[0][1]))
+        else:
+            # multi exon transcripts
+            for number, position in enumerate(positions):
+                # start exon
+                if number == 0:
+                    start_exon_start[number].append(abs(position[0]))
+                    start_exon_end[number].append(abs(position[1]))
+                    # end exon
+                else:
+                    end_exon_start[number].append(abs(position[0]))
+                    end_exon_end[number].append(abs(position[1]))
+    return start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end
 
 
-def writefile(start_dict, end_dict, outfile, header):
+def plot(start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end, output):
     """
-    Writes a file with statistics on the exons.
-
-    :param start_dict: Starting positions differences
-    :param end_dict: Ending position differences
-    :param outfile: Output location
-    :param header: Name of comparison
-    :return: File with statistics
+        Plots the exon differences into 3 figures with 6 subplots each.
     """
-    for start_pos, end_pos in zip(start_dict.items(), end_dict.items()):
-        table = [
-            [header],
-            ['', 'START', 'END'],
-            ['EXON:', start_pos[0], end_pos[0]],
-            ['Average', np.average(start_pos[1]), np.average(end_pos[1])],
-            ['Median:', np.median(start_pos[1]), np.median(end_pos[1])],
-            ['Minimum:', np.min(start_pos[1]), np.min(end_pos[1])],
-            ['Maximum:', np.max(start_pos[1]), np.max(end_pos[1])]
-        ]
-        with open(outfile, 'a') as file:
-            file.write(tabulate(table, tablefmt="plain") + '\n\n')
-
-
-def plot_boxplots(oxford_flair_start, oxford_flair_end,
-                  oxford_talon_start, oxford_talon_end
-                  , flair_talon_start, flair_talon_end):
-    """
-    Plot data as boxplots.
-    """
-    plt.rcParams["figure.figsize"] = [15, 10]
+    plt.rcParams["figure.figsize"] = [15, 15]
     plt.rcParams["figure.autolayout"] = True
     plt.rcParams.update({'font.size': 15})
 
-    labels_start, data_start = [*zip(*oxford_flair_start.items())]
-    labels_end, data_end = [*zip(*oxford_flair_end.items())]
-    fig_oxford_flair, axs = plt.subplots(2)
-    fig_oxford_flair.suptitle('Exon position differences flair and oxford')
-    axs[0].boxplot(data_start)
-    axs[0].set_yscale('log')
-    axs[0].set_title('Exon start positions')
-    axs[0].set_xticklabels(labels_start, rotation=45)
-    axs[1].boxplot(data_end)
-    axs[1].set_yscale('log')
-    axs[1].set_title('Exon end positions')
-    axs[1].set_xticklabels(labels_end, rotation=45)
-    plt.savefig(snakemake.output.oxford_flair, dpi=200)
+    fig_oxford_flair, axs = plt.subplots(nrows=3, ncols=2)
+    title = output.split('/')[-1].split('.')[0]
+    fig_oxford_flair.suptitle(f'Comparison of {title} start and end exons from three-way matched transcripts')
 
-    labels_start, data_start = [*zip(*oxford_talon_start.items())]
-    labels_end, data_end = [*zip(*oxford_talon_end.items())]
-    fig_oxford_talon, axs = plt.subplots(2)
-    fig_oxford_talon.suptitle('Exon position differences oxford and talon')
-    axs[0].boxplot(data_start)
-    axs[0].set_yscale('log')
-    axs[0].set_title('Exon start positions')
-    axs[0].set_xticklabels(labels_start, rotation=45)
-    axs[1].boxplot(data_end)
-    axs[1].set_yscale('log')
-    axs[1].set_title('Exon end positions')
-    axs[1].set_xticklabels(labels_end, rotation=45)
-    plt.savefig(snakemake.output.oxford_talon, dpi=200)
+    labels_start, data_start = [*zip(*single_exon_start.items())]
+    axs[0, 0].boxplot(data_start, showfliers=True)
+    axs[0, 0].set(xlabel="Exon number", ylabel="Number of bases")
+    axs[0, 0].set_title('Single-exon, start position differences')
+    axs[0, 0].set_xticklabels(labels_start, rotation=45)
 
-    labels_start, data_start = [*zip(*flair_talon_start.items())]
-    labels_end, data_end = [*zip(*flair_talon_end.items())]
-    fig_flair_talon, axs = plt.subplots(2)
-    fig_flair_talon.suptitle('Exon position differences flair and talon')
-    axs[0].boxplot(data_start)
-    axs[0].set_yscale('log')
-    axs[0].set_title('Exon start positions')
-    axs[0].set_xticklabels(labels_start, rotation=45)
-    axs[1].boxplot(data_end)
-    axs[1].set_yscale('log')
-    axs[1].set_title('Exon end positions')
-    axs[1].set_xticklabels(labels_end, rotation=45)
-    plt.savefig(snakemake.output.flair_talon, dpi=200)
+    labels_start, data_start = [*zip(*single_exon_end.items())]
+    axs[0, 1].boxplot(data_start, showfliers=True)
+    axs[0, 1].set(xlabel="Exon number", ylabel="Number of bases")
+    axs[0, 1].set_title('Single-exon, end position differences')
+    axs[0, 1].set_xticklabels(labels_start, rotation=45)
+
+    labels_start, data_start = [*zip(*start_exon_start.items())]
+    axs[1, 0].boxplot(data_start, showfliers=True)
+    axs[1, 0].set(xlabel="Exon number", ylabel="Number of bases")
+    axs[1, 0].set_title('Start exon, start position differences')
+    axs[1, 0].set_xticklabels(labels_start, rotation=45)
+
+    labels_start, data_start = [*zip(*start_exon_end.items())]
+    axs[1, 1].boxplot(data_start, showfliers=True)
+    axs[1, 1].set(xlabel="Exon number", ylabel="Number of bases")
+    axs[1, 1].set_title('Start exon, end position differences')
+    axs[1, 1].set_xticklabels(labels_start, rotation=45)
+
+    labels_start, data_start = [*zip(*end_exon_start.items())]
+    axs[2, 0].boxplot(data_start, showfliers=True)
+    axs[2, 0].set(xlabel="Exon number", ylabel="Number of bases")
+    axs[2, 0].set_title('End exon, start position differences')
+    axs[2, 0].set_xticklabels(labels_start, rotation=45)
+
+    labels_start, data_start = [*zip(*end_exon_end.items())]
+    axs[2, 1].boxplot(data_start, showfliers=True)
+    axs[2, 1].set(xlabel="Exon number", ylabel="Number of bases")
+    axs[2, 1].set_title('End exon, end position differences')
+    axs[2, 1].set_xticklabels(labels_start, rotation=45)
+
+    plt.savefig(output, dpi=200)
 
 
 def main():
@@ -201,17 +198,14 @@ def main():
     transcript_exons = merge(tcons, oxford, flair, talon)
     oxford_flair, oxford_talon, flair_talon = calculate_difference(transcript_exons)
 
-    oxford_flair_start, oxford_flair_end = start_end(oxford_flair)
-    oxford_talon_start, oxford_talon_end = start_end(oxford_talon)
-    flair_talon_start, flair_talon_end = start_end(flair_talon)
+    start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end = start_end(oxford_flair)
+    plot(start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end, snakemake.output.oxford_flair)
 
-    plot_boxplots(oxford_flair_start, oxford_flair_end,
-                  oxford_talon_start, oxford_talon_end,
-                  flair_talon_start, flair_talon_end)
+    start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end = start_end(oxford_talon)
+    plot(start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end, snakemake.output.oxford_talon)
 
-    writefile(oxford_flair_start, oxford_flair_end, snakemake.output.oxford_flair_summ, 'oxford vs flair')
-    writefile(oxford_talon_start, oxford_talon_end, snakemake.output.oxford_talon_summ, 'oxford vs talon')
-    writefile(flair_talon_start, flair_talon_end, snakemake.output.flair_talon_summ, 'flair vs talon')
+    start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end = start_end(flair_talon)
+    plot(start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end, snakemake.output.flair_talon)
 
 
 main()
