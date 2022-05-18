@@ -2,6 +2,8 @@
 Dogukan Bayraktar
 Python Version 3.9.7
 Adds transcript counts to GTF files for FLAIR, TALON, and OXFORD.
+Filters out missing transcripts from FLAIR.
+Filters out 0 count transcripts from Oxford.
 """
 import logging
 
@@ -80,17 +82,22 @@ def combine(gtf_file, counts, output, missing_output):
     Loops through the GTF file and checks the counts dictionary
     to add counts to the line and then writes it to a new file.
 
+    This function is used per GTF file.
+
     Flair combines the transcript id with the gene id for known
     transcripts using '_' as a delimiter. This can cause problems
     when the names in the annotation file contain '_'.
 
-    Flair and Oxford can have transcripts present in the GTF file
-    that are missing from the abundance file. This is caused by minimap2
-    mapping ambiguity in the case of flair, and the long-read mode from
-    stringtie for oxford. If there are any missing transcripts these
-    will be written to the missing transcript log.
+    Flair can have transcripts present in the GTF file that are missing
+    from the abundance file. This is caused by minimap2 mapping
+    ambiguity. If there are any missing transcripts these will be
+    written to the missing transcript log and extracted to a separate
+    GTF.
 
-    Transcripts with a count of 0 are filtered out.
+    Stringtie adds transcripts with 0 count to the GTF file in
+    annotation-guided mode. These 0 count transcripts get removed and
+    extracted to a separate GTF file. The IDs of the removed transcripts
+    are written to the log files.
 
     :param missing_output: GTF file with the removed transcripts
     :param gtf_file: The GTF file produced by a pipeline.
@@ -132,7 +139,7 @@ def combine(gtf_file, counts, output, missing_output):
 
                 # transcript is not missing from the abundance and has at least 1 count.
                 # Add transcript count to end of line and write to file
-                # counts are not in TPM, hijacking the column for use with GFFcompare
+                # counts are not in TPM, hijacking the column for use with GffCompare
                 write = True
                 outfile.write(f'{line[:-1]} TPM "{str(count)}";\n')
             else:
