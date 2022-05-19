@@ -1,7 +1,8 @@
 """
 Dogukan Bayraktar
 Python Version 3.9.7
-Compare exon positions of transcripts matched by GFFcompare
+Compare exon positions of transcripts matched by GffCompare and creates
+boxplots.
 """
 from collections import defaultdict
 import numpy as np
@@ -10,11 +11,14 @@ import matplotlib.pyplot as plt
 
 def tracking(gfftracking):
     """
-    Read the data from the GFFcompare gffcmp.tracking file and
+    Read the data from the GffCompare gffcmp.tracking file and
     format as a dictionary.
 
-    :return: dictionary format: tcons_XXXX : [[transcript_id 1 ],
-    [transcript_id 2 ], [transcript_id 3]]
+    Only takes three-way matches from the file.
+
+    :return: tcons_XXXX (key) : [[transcript_id 1],
+                                [transcript_id 2],
+                                [transcript_id 3]] (value)
     """
     tcons = {}
     with open(gfftracking) as file:
@@ -36,9 +40,9 @@ def gtf(file):
     Read transcript data from a GTF file and format as dictionary.
 
     :param file: GTF file
-    :return: Dictionary output: key = transcript_id, value =
-    [(exon_start, exon_end), (exon_start, exon_end),
-    (exon_start, exon_end) etc...]
+    :return: transcript_id (key): [(exon_start, exon_end),
+                                   (exon_start, exon_end),
+                                   (exon_start, exon_end) etc...](value)
     """
     gtf_dict = defaultdict(list)
     with open(file) as GTF:
@@ -55,27 +59,37 @@ def gtf(file):
 
 def merge(tcons, oxford, flair, talon):
     """
-    Place exon positions of transcripts into dictionary by matching
-    transcript id
+    Places exon positions of transcripts into dictionary by matching
+    transcript id.
 
-    :param tcons: tcons_XXXX : [[transcript_id 1 ], [transcript_id 2 ]]
+    :param tcons: tcons_XXXX (key) : [[transcript_id 1 ],
+                                      [transcript_id 2 ],
+                                      [transcript_id 3]] (value)
+
     :param oxford: key = transcript_id, value = [(exon_start, exon_end)]
     :param flair: key = transcript_id, value = [(exon_start, exon_end)]
     :param talon: key = transcript_id, value = [(exon_start, exon_end)]
-    :return: dictionary output: Key = tcons_XXXX, value = [[(exon_start,
-     exon_end)], [(exon_start, exon_end)], [(exon_start, exon_end)]]
+
+    :return: tcons_XXXX (key) :[[(exon_start, exon_end)],
+                                [(exon_start, exon_end)],
+                                [(exon_start, exon_end)]] (value)
     """
     tcons_exon = {}
-    for key, value in tcons.items():
+    for tcon_id, transcript_ids in tcons.items():
         # no need to select terminal exons for single-exon transcripts
-        if len(oxford[value[0]]) == 1:
-            tcons_exon[key] = [oxford[value[0]], flair[value[1]], talon[value[2]]]
+        if len(oxford[transcript_ids[0]]) == 1:
+            tcons_exon[tcon_id] = [oxford[transcript_ids[0]],
+                                   flair[transcript_ids[1]],
+                                   talon[transcript_ids[2]]]
         # Slice terminal exons for multi-exon transcripts
         else:
-            ox_start_end = [oxford[value[0]][0], oxford[value[0]][-1]]
-            fl_start_end = [flair[value[1]][0], flair[value[1]][-1]]
-            ta_start_end = [talon[value[2]][0], talon[value[2]][-1]]
-            tcons_exon[key] = [ox_start_end, fl_start_end, ta_start_end]
+            ox_start_end = [oxford[transcript_ids[0]][0],
+                            oxford[transcript_ids[0]][-1]]
+            fl_start_end = [flair[transcript_ids[1]][0],
+                            flair[transcript_ids[1]][-1]]
+            ta_start_end = [talon[transcript_ids[2]][0],
+                            talon[transcript_ids[2]][-1]]
+            tcons_exon[tcon_id] = [ox_start_end, fl_start_end, ta_start_end]
     return tcons_exon
 
 
@@ -83,9 +97,10 @@ def calculate_difference(transcript_exons):
     """
     Calculate the differences between exon positions
 
-    :param transcript_exons: Key = tcons_XXXX, value = [[(exon_start,
-     exon_end)], [(exon_start, exon_end)], [(exon_start, exon_end)]]
-    :return: Differences between pipeline exon positions
+    :param transcript_exons: tcons_XXXX (key): [[(exon_start, exon_end)],
+                                                [(exon_start, exon_end)],
+                                                [(exon_start, exon_end)]]
+    :return: Differences between terminal exon positions
     """
     oxford_flair = []
     oxford_talon = []
@@ -106,9 +121,10 @@ def calculate_difference(transcript_exons):
 
 def start_end(compare):
     """
-    Create four dictionaries. Start dict contains differences of all
-    starting positions of exons. End dict contains differences of all
-    ending positions of exons.
+    Sorts the calculated differences into 4 dictionaries.
+    Start-exon - start position and end position
+    End-exon - start position and end position
+    single-exon - start position and end position
 
     :param compare: Dictionary with calculated differences.
     :return: Dictionaries with start and end positions.
@@ -122,33 +138,39 @@ def start_end(compare):
     for positions in compare:
         # single exon transcripts
         if len(positions) == 1:
+            # start position
             single_exon_start['0'].append(abs(positions[0][0]))
+            # end position
             single_exon_end['0'].append(abs(positions[0][1]))
         else:
             # multi exon transcripts
             for number, position in enumerate(positions):
                 # start exon
                 if number == 0:
+                    # start exon - start
                     start_exon_start[number].append(abs(position[0]))
+                    # start exon - end
                     start_exon_end[number].append(abs(position[1]))
                     # end exon
                 else:
+                    # end exon start
                     end_exon_start[number].append(abs(position[0]))
+                    # end exon end
                     end_exon_end[number].append(abs(position[1]))
     return start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end
 
 
 def plot(start_exon_start, start_exon_end, end_exon_start, end_exon_end, single_exon_start, single_exon_end, output):
     """
-        Plots the exon differences into 3 figures with 6 subplots each.
+    Plots the exon differences into 3 figures with 6 subplots each.
     """
     plt.rcParams["figure.figsize"] = [15, 15]
     plt.rcParams["figure.autolayout"] = True
     plt.rcParams.update({'font.size': 15})
 
-    fig_oxford_flair, axs = plt.subplots(nrows=3, ncols=2)
+    main_figure, axs = plt.subplots(nrows=3, ncols=2)
     title = output.split('/')[-1].split('.')[0]
-    fig_oxford_flair.suptitle(f'Comparison of {title} start and end exons from three-way matched transcripts')
+    main_figure.suptitle(f'Comparison of {title} start and end exons from three-way matched transcripts')
 
     labels_start, data_start = [*zip(*single_exon_start.items())]
     axs[0, 0].boxplot(data_start, showfliers=True)

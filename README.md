@@ -32,13 +32,16 @@ You can run ```snakemake --report report.html``` AFTER the workflow finished to 
 
 The GTF files located in the 03_combined and 05_matched_transcripts have a column called TPM. This is actuallu the raw number of counts. The attribute is hijacked to pass counts to GFFCompare.
 
+When testing the workflow it took about 18 hours on 10 threads with 100g memory to process 6 Human samples. Running with a much smaller RNA-virus dataset it took about 8 hours for 6 samples.
+
+The main bottleneck is TranscriptClean which requires many hours and high memory to correct all samples.
 # <a name="Troubleshooting"><a/>Troubleshooting
 
 ### Transcriptclean
-Transcriptclean requires the reference genome fasta file to only have one string per header.
+Transcriptclean requires the reference genome Fasta file to only have one string per header. In order to run TranscriptClean you must edit the headers.
 
 ### Conda environment fails to build
-Try running the workflow with an older version of snakemake such as version 5.3.2.
+There seems to be an issue with Snakemake 7.3.1 when building conda environments. If a time out error occurs you can try running the workflow with an older version of snakemake such as version 5.3.2.
 
 
 # <a name="License"><a/>License
