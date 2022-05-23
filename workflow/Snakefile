@@ -2,7 +2,7 @@
 Dogukan Bayraktar
 Snakemake version 7.3.1
 Workflow for running and comparatively analyzing results from the three
-RNA-seq pipelines TALON, FLAIR, and OXFORD
+RNA-seq pipelines TALON, FLAIR, and OXFORD.
 """
 # python strings as paths do not work with pathlib objects
 from pathlib import Path
@@ -774,6 +774,7 @@ rule gffcompare:
             -e 100 \
             -d 100 \
             --no-merge \
+            -T \
             -o {params.outdir} \
             {input.oxford} {input.flair} {input.talon}
         '''
