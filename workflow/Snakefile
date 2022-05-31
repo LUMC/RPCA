@@ -35,17 +35,6 @@ report: "report/workflow.rst"
 
 rule all:
     input:
-        # TALON
-        # talon_abundance = OUTDIR / "02_TALON" / 'filtered_talon_abundance_filtered.tsv',
-        # talon_GTF = OUTDIR / "02_TALON" / 'filtered_talon.gtf',
-        #
-        # FLAIR
-        # flair_abundance = OUTDIR / "02_FLAIR" / "quantify" / "flair_counts_matrix.tsv",
-        #
-        # OXFORD
-        # ox_transcripts = OUTDIR / "02_OXFORD" / "abundance" / "transcript_count_matrix.csv",
-        #
-        # ANALYSES
         all_diagram = OUTDIR / "QC_notebook_graphs" / "all_overlap_diagram.png",
         known_diagram = OUTDIR / "QC_notebook_graphs" / "known_overlap_diagram.png",
         novel_diagram = OUTDIR / "QC_notebook_graphs" / "novel_overlap_diagram.png",
@@ -65,8 +54,9 @@ rule all:
         tracking_two = OUTDIR / "05_matched_transcripts" / "two_match.gtf",
         tracking_one = OUTDIR / "05_matched_transcripts" / "no_match.gtf",
         # classification = expand(OUTDIR / "QC_sqanti3" / "{gtf}" / "{gtf}_classification.txt", gtf=["02_TALON/filtered_talon", "02_FLAIR/collapse/flair.collapse.isoforms", "02_OXFORD/stringtie_output/oxford_merged"]),
-        # plots = expand(OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
-        # qc_report = OUTDIR / "QC_muliqc" / "multiqc_report.html"
+        plots = expand(OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt", sample=[".".join(read.name.split('.')[:-1]) for read in READS]),
+        # run after results are generated
+        #qc_report = OUTDIR / "QC_muliqc" / "multiqc_report.html"
 
 rule nanoplot:
     """
