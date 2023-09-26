@@ -3,5 +3,7 @@ resources
 data
 outfiles
 .snakemake
+.ipynb_checkpoints
+__pycache__
 /rulegraph.pdf
 /*.out
