@@ -71,6 +71,9 @@ rule nanoplot:
         plot =  OUTDIR / "QC_nanoplot" / "{sample}" / "{sample}_NanoStats.txt"
     threads: 10
     singularity: "docker://quay.io/biocontainers/nanoplot:1.40.0--pyhdfd78af_0"
+    resources:
+        mem = "4GiB"
+        runtime = 120
     shell:
         '''
         NanoPlot \
@@ -96,6 +99,9 @@ rule minimap2_align:
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/minimap2:2.17--h5bf99c6_4'
+    resources:
+        mem = "24GiB"
+        runtime = 1440
     shell:
         '''
         minimap2 \
@@ -120,6 +126,9 @@ rule sam_to_bam:
     threads: 10
     singularity:
         "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
+    resources:
+        mem = "4GiB"
+        runtime = 120
     shell:
         '''
         samtools view -Sb {input.sam} | samtools sort -@ {threads} -o {output.bam}
@@ -146,6 +155,9 @@ rule get_SJs_from_gtf:
     threads: 1
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
+    resources:
+        mem = "8GiB"
+        runtime = 60
     shell:
         '''
         get_SJs_from_gtf \
@@ -169,6 +181,9 @@ rule transcriptclean:
     threads: 10
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
+    resources:
+        mem = "100GiB"
+        runtime = 1440
     shell:
         '''
         TranscriptClean \
@@ -193,6 +208,9 @@ rule talon_label_reads:
     threads: 10
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
+    resources:
+        mem = "25GiB"
+        runtime = 2880
     shell:
         '''
         talon_label_reads \
@@ -215,6 +233,9 @@ rule create_talon_config:
     output:
         config = OUTDIR / "02_TALON" / "config.csv",
     threads: 1
+    resources:
+        mem = "1GiB"
+        runtime = 2
     run:
         for label, name in zip(input.labels, params.datasetnames):
             with open(output.config, 'a+') as config:
@@ -241,6 +262,9 @@ rule talon_initialize_annotate_database:
     threads: 10
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
+    resources:
+        mem = "10GiB"
+        runtime = 60
     shell:
         '''
         
@@ -279,6 +303,9 @@ rule talon_filter_transcripts:
     threads: 1
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
+    resources:
+        mem = "4GiB"
+        runtime = 30
     shell:
         '''
         talon_filter_transcripts \
@@ -306,6 +333,9 @@ rule talon_abundance:
         abundance = OUTDIR / "02_TALON" / 'filtered_talon_abundance_filtered.tsv'
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
+    resources:
+        mem = "4GiB"
+        runtime = 30
     shell:
         '''
         talon_abundance \
@@ -331,6 +361,9 @@ rule talon_create_GTF:
         GTF = OUTDIR / "02_TALON" / 'filtered_talon.gtf'
     singularity:
         "docker://biocontainers/talon:v5.0_cv1"
+    resources:
+        mem = "4GiB"
+        runtime = 30
     shell:
         '''
         talon_create_GTF \
@@ -359,6 +392,9 @@ rule flair_bam_to_bed12:
     output:
         bed12 = OUTDIR / "02_FLAIR" / "bed12" / "{sample}.bed"
     threads: 1
+    resources:
+        mem = "4GiB"
+        runtime = 60
     conda:
         "envs/bam2bed12.yaml"
     shell:
@@ -384,6 +420,9 @@ rule flair_correct:
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    resources:
+        mem = "4GiB"
+        runtime = 120
     shell:
         '''
         flair.py correct \
@@ -407,6 +446,9 @@ rule flair_concatenate:
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    resources:
+        mem = "4GiB"
+        runtime = 30
     shell:
         '''
         cat {input.bed_corrected} >> {output.bed_concatenated}
@@ -435,6 +477,9 @@ rule flair_collapse:
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    resources:
+        mem = "16GiB"
+        runtime = 120
     shell:
         '''
         flair.py collapse \
@@ -464,6 +509,9 @@ rule flair_config:
     output:
         config = OUTDIR / "02_FLAIR" / "manifest.tsv"
     threads: 1
+    resources:
+        mem = "1GiB"
+        runtime = 2
     run:
         for read, name in zip(input.reads, params.datasetnames):
             with open(output.config, 'a+') as config:
@@ -483,6 +531,9 @@ rule flair_quantify:
     threads: 10
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
+    resources:
+        mem = "4GiB"
+        runtime = 120
     shell:
         '''
         flair.py quantify \
@@ -510,6 +561,9 @@ rule samtool_stats:
     threads: 10
     singularity:
         "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
+    resources:
+        mem = "4GiB"
+        runtime = 120
     shell:
         '''
         samtools stats \
