@@ -595,6 +595,9 @@ rule oxford_filter:
     threads: 10
     conda:
         "envs/oxford_filter.yaml"
+    resources:
+        mem = "8GiB"
+        runtime = 120
     shell:
         '''
         samtools view -q {params.min_mq} -F 2304 -b {input.bam} \
@@ -617,6 +620,9 @@ rule oxford_run_stringtie:
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     threads: 10
+    resources:
+        mem = "2GiB"
+        runtime = 120
     shell:
         '''
         stringtie --rf -G {input.annotation} -L -p {threads} {params.opts} -o {output.gff} {input.bam_filtered}
@@ -636,6 +642,9 @@ rule oxford_merge_stringtie:
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     threads: 10
+    resources:
+        mem = "10GiB"
+        runtime = 120
     shell:
         '''
         stringtie \
@@ -657,6 +666,9 @@ rule oxford_abundance:
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
     threads: 10
+    resources:
+        mem = "2GiB"
+        runtime = 120
     shell:
         '''
         stringtie \
@@ -680,6 +692,9 @@ rule oxford_config:
     output:
         config = OUTDIR / "02_OXFORD" / "abundance" / "oxford_config.tab"
     threads: 1
+    resources:
+        mem = "1GiB"
+        runtime = 2
     run:
         for read, name in zip(input.count_gtf, params.datasetnames):
             with open(output.config, 'a+') as config:
@@ -698,6 +713,9 @@ rule oxford_calc_abundance:
     threads: 10
     singularity:
         "docker://quay.io/biocontainers/stringtie:2.2.1--hecb563c_2"
+    resources:
+        mem = "8GiB"
+        runtime = 120
     shell:
         '''
         declare -i calc=0;
@@ -733,6 +751,9 @@ rule sqanti3:
     threads: 10
     singularity:
         "/exports/sascstudent/dbayraktar/sqanti3_4.2_docker.sif"
+    resources:
+        mem = "8GiB"
+        resources = 120
     shell:
         '''
         sqanti3_qc.py \
@@ -757,6 +778,9 @@ rule subread_featurecounts:
     threads: 10
     singularity:
         "docker://quay.io/biocontainers/subread:2.0.1--h7132678_2"
+    resources:
+        mem = "8GiB"
+        runtime = 240
     shell:
         '''
         featureCounts \
@@ -792,6 +816,9 @@ rule combine:
         talon_removed = OUTDIR / "03_combined" / "talon_removed.gtf",
         removed_transcripts = OUTDIR / "03_combined" / "removed_transcripts.log",
     threads: 1
+    resources:
+        mem = "4GiB"
+        runtime = 30
     script:
         '''scripts/combine.py'''
 
@@ -811,6 +838,9 @@ rule gffcompare:
     threads: 1
     singularity:
         "docker://quay.io/biocontainers/gffcompare:0.11.2--h9f5acd7_3"
+    resources:
+        mem = "4GiB"
+        runtime = 90
     shell:
         '''
         gffcompare \
@@ -838,6 +868,9 @@ rule extract_matches:
         tracking_three = OUTDIR / "05_matched_transcripts" / "three_match.gtf",
         tracking_two = OUTDIR / "05_matched_transcripts" / "two_match.gtf",
         tracking_one = OUTDIR / "05_matched_transcripts" / "no_match.gtf",
+    resources:
+        mem = "4GiB"
+        runtime = 30
     script:
         '''scripts/extract_overlap.py'''
 
@@ -859,6 +892,9 @@ rule venn_diagrams:
         "envs/notebooks.yaml"
     log:
         notebook = OUTDIR / "QC_notebook_graphs" / "processed_venndiagrams.ipynb"
+    resources:
+        mem = "8GiB"
+        runtime = 90
     notebook:
         "notebooks/venndiagrams.py.ipynb"
 
@@ -879,6 +915,9 @@ rule alignment_stats:
         "envs/notebooks.yaml"
     log:
         notebook = OUTDIR / "QC_notebook_graphs" / "processed_align_stats.ipynb"
+    resources:
+        mem = "8GiB"
+        runtime = 90
     notebook:
         "notebooks/align_stats.py.ipynb"
 
@@ -902,6 +941,9 @@ rule count_stats:
         "envs/notebooks.yaml"
     log:
         notebook = OUTDIR / "QC_notebook_graphs" / "processed_count_stats.ipynb"
+    resources:
+        mem = "8GiB"
+        runtime = 90
     notebook:
         "notebooks/count_stats.py.ipynb"
 
@@ -922,6 +964,9 @@ rule exon_comparison:
     threads: 1
     conda:
         "envs/notebooks.yaml"
+    resources:
+        mem = "4GiB"
+        runtime = 30
     script: '''scripts/exon_comparison.py'''
 
 rule multiQC:
@@ -938,6 +983,9 @@ rule multiQC:
     threads: 1
     singularity:
         "docker://quay.io/biocontainers/multiqc:1.12--pyhdfd78af_0"
+    resources:
+        mem = "8GiB"
+        runtime = 90
     shell:
         '''
         multiqc \
