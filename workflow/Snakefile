@@ -72,7 +72,7 @@ rule nanoplot:
     threads: 10
     singularity: "docker://quay.io/biocontainers/nanoplot:1.40.0--pyhdfd78af_0"
     resources:
-        mem = "4GiB",
+        mem = "32GiB",
         runtime = 120
     shell:
         '''
@@ -115,7 +115,7 @@ rule minimap2_align:
 
 rule sam_to_bam:
     """"
-    Converts SAM to BAM. 
+    Converts SAM to BAM.
     """
     input:
         sam = rules.minimap2_align.output
@@ -127,7 +127,7 @@ rule sam_to_bam:
     singularity:
         "docker://quay.io/biocontainers/samtools:1.14--hb421002_0"
     resources:
-        mem = "4GiB",
+        mem = "32GiB",
         runtime = 120
     shell:
         '''
@@ -182,8 +182,8 @@ rule transcriptclean:
     singularity:
         "docker://biocontainers/transcriptclean:v2.0.2_cv1"
     resources:
-        mem = "100GiB",
-        runtime = 1440
+        mem = "200GiB",
+        runtime = 2880
     shell:
         '''
         TranscriptClean \
@@ -203,11 +203,12 @@ rule talon_label_reads:
         genome = reference_genome
     params:
         outdir = lambda wildcards: OUTDIR / "02_TALON" / "labeled" / wildcards.sample,
+        tmpdir = lambda wildcards: OUTDIR / "02_TALON" / "labeled" / wildcards.sample / "tmp",
     output:
         labeled_sam = OUTDIR / "02_TALON" / "labeled" / "{sample}_labeled.sam",
     threads: 10
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "docker://quay.io/biocontainers/talon:5.0--pyhdfd78af_0"
     resources:
         mem = "25GiB",
         runtime = 2880
@@ -219,6 +220,7 @@ rule talon_label_reads:
             --t {threads} \
             --ar 20 \
             --deleteTmp \
+            --tmpDir={params.tmpdir} \
             --o {params.outdir}
         '''
 
@@ -261,10 +263,10 @@ rule talon_initialize_annotate_database:
         database = OUTDIR / "02_TALON" / "talon.db"
     threads: 10
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "docker://quay.io/biocontainers/talon:5.0--pyhdfd78af_0"
     resources:
-        mem = "10GiB",
-        runtime = 60
+        mem = "200GiB",
+        runtime = 1440
     shell:
         '''
         
@@ -302,7 +304,7 @@ rule talon_filter_transcripts:
         filtered_transcripts = OUTDIR / "02_TALON" / "filtered_transcripts.csv"
     threads: 1
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "docker://quay.io/biocontainers/talon:5.0--pyhdfd78af_0"
     resources:
         mem = "4GiB",
         runtime = 30
@@ -332,7 +334,7 @@ rule talon_abundance:
     output:
         abundance = OUTDIR / "02_TALON" / 'filtered_talon_abundance_filtered.tsv'
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "docker://quay.io/biocontainers/talon:5.0--pyhdfd78af_0"
     resources:
         mem = "4GiB",
         runtime = 30
@@ -360,7 +362,7 @@ rule talon_create_GTF:
     output:
         GTF = OUTDIR / "02_TALON" / 'filtered_talon.gtf'
     singularity:
-        "docker://biocontainers/talon:v5.0_cv1"
+        "docker://quay.io/biocontainers/talon:5.0--pyhdfd78af_0"
     resources:
         mem = "4GiB",
         runtime = 30
@@ -395,8 +397,8 @@ rule flair_bam_to_bed12:
     resources:
         mem = "4GiB",
         runtime = 60
-    conda:
-        "envs/bam2bed12.yaml"
+    singularity:
+        "docker://quay.io/davycats/lumc-rpca:0.1"
     shell:
         '''
         {params.scriptpath} --input_bam {input.bam} > {output.bed12}
@@ -532,7 +534,7 @@ rule flair_quantify:
     singularity:
         'docker://quay.io/biocontainers/flair:1.5--hdfd78af_4'
     resources:
-        mem = "4GiB",
+        mem = "32GiB",
         runtime = 120
     shell:
         '''
@@ -593,8 +595,8 @@ rule oxford_filter:
     output:
         bam_filtered = OUTDIR / "02_OXFORD" / "filtered"/ "{sample}.bam"
     threads: 10
-    conda:
-        "envs/oxford_filter.yaml"
+    singularity:
+        "docker://quay.io/davycats/lumc-rpca:0.1"
     resources:
         mem = "8GiB",
         runtime = 120
@@ -839,7 +841,7 @@ rule gffcompare:
     singularity:
         "docker://quay.io/biocontainers/gffcompare:0.11.2--h9f5acd7_3"
     resources:
-        mem = "4GiB",
+        mem = "32GiB",
         runtime = 90
     shell:
         '''
@@ -888,8 +890,8 @@ rule venn_diagrams:
         known_upset = report(OUTDIR / "QC_notebook_graphs" / "known_overlap_upset.png", caption="report/transcript_overlap/known_upset.rst", category="Transcript overlap graphs"),
         novel_upset = report(OUTDIR / "QC_notebook_graphs" / "novel_overlap_upset.png", caption="report/transcript_overlap/novel_upset.rst", category="Transcript overlap graphs"),
     threads: 1
-    conda:
-        "envs/notebooks.yaml"
+    singularity:
+        "docker://quay.io/davycats/lumc-rpca:0.1"
     log:
         notebook = OUTDIR / "QC_notebook_graphs" / "processed_venndiagrams.ipynb"
     resources:
@@ -911,8 +913,8 @@ rule alignment_stats:
         mismatch = report(OUTDIR / "QC_notebook_graphs" / "read_mismatches.png", caption="report/alignment/mismatch.rst", category="Alignment statistics"),
         readlen = report(OUTDIR / "QC_notebook_graphs" / "read_lengths.png", caption="report/alignment/readlen.rst", category="Alignment statistics"),
     threads: 1
-    conda:
-        "envs/notebooks.yaml"
+    singularity:
+        "docker://quay.io/davycats/lumc-rpca:0.1"
     log:
         notebook = OUTDIR / "QC_notebook_graphs" / "processed_align_stats.ipynb"
     resources:
@@ -937,8 +939,8 @@ rule count_stats:
         per_feature = report(OUTDIR / "QC_notebook_graphs" / "counts_per_feature.png", caption="report/abundance/per_feature.rst", category="Abundance graphs"),
         comp = report(OUTDIR / "QC_notebook_graphs" / "counts_per_pipeline.png", caption="report/abundance/comp.rst", category="Abundance graphs"),
     threads: 1
-    conda:
-        "envs/notebooks.yaml"
+    singularity:
+        "docker://quay.io/davycats/lumc-rpca:0.1"
     log:
         notebook = OUTDIR / "QC_notebook_graphs" / "processed_count_stats.ipynb"
     resources:
@@ -962,8 +964,8 @@ rule exon_comparison:
         oxford_talon = report(OUTDIR / "QC_exon_comparison" / "oxford_talon.png", caption="report/exon/exon.rst", category="GFFcompare exon matching boxplots"),
         flair_talon = report(OUTDIR / "QC_exon_comparison" / "flair_talon.png", caption="report/exon/exon.rst", category="GFFcompare exon matching boxplots"),
     threads: 1
-    conda:
-        "envs/notebooks.yaml"
+    singularity:
+        "docker://quay.io/davycats/lumc-rpca:0.1"
     resources:
         mem = "4GiB",
         runtime = 30
@@ -993,5 +995,3 @@ rule multiQC:
         {params.samtools_subread_dir} \
         --outdir {params.outdir}
         '''
-
-
